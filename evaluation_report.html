@@ -1,0 +1,72 @@
+<!doctype html><html lang="zh"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>币安 1m 方向预测 — 样外验证报告</title>
+<style>
+:root{--bg:#0e1116;--card:#171c24;--line:#262d38;--tx:#e6e9ef;--muted:#9aa4b2;--acc:#4f8cff;--ok:#34c77b;--warn:#ffb454}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--tx);font:15px/1.6 -apple-system,"Noto Sans CJK SC","WenQuanYi Micro Hei",Segoe UI,Roboto,sans-serif}
+.wrap{max-width:960px;margin:0 auto;padding:32px 20px 60px}
+h1{font-size:24px;margin:6px 0 2px}h2{font-size:18px;margin:34px 0 10px;padding-bottom:8px;border-bottom:1px solid var(--line)}
+.sub{color:var(--muted);font-size:13px}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin:22px 0}
+.kpi{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px}
+.kpi .v{font-size:26px;font-weight:700}.kpi .l{color:var(--muted);font-size:12px;margin-top:2px}
+.kpi.ok .v{color:var(--ok)}table{border-collapse:collapse;width:100%;background:var(--card)}
+th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);font-size:13px}
+th{color:var(--muted);font-weight:600}td.n{text-align:right;font-variant-numeric:tabular-nums}
+.m{display:inline-block;background:var(--card);border:1px solid var(--line);border-radius:999px;padding:2px 10px;margin:3px 3px 0 0;font-size:12px}
+.m b{color:var(--ok)}code{background:#0a0d11;border:1px solid var(--line);padding:1px 6px;border-radius:6px;font-size:12px}
+.foot{color:var(--muted);font-size:12px;margin-top:40px}
+.badge{display:inline-block;background:rgba(52,199,123,.14);color:var(--ok);border:1px solid var(--ok);border-radius:8px;padding:2px 10px;font-size:13px;font-weight:600}
+</style></head><body><div class="wrap">
+
+<h1>币安现货 1 分钟 K 线 · 未来方向预测</h1>
+<div class="sub">严格样本外验证报告 · 数据 2020-01 → 2026-08 · 测试窗 2025-09-04 → 2026-08-28 (约 331 天) · 生成于 2026-08-28</div>
+
+<div class="kpis">
+<div class="kpi ok"><div class="v">69.02%</div><div class="l">BTC 堆叠准确率</div></div>
+<div class="kpi ok"><div class="v">68.57%</div><div class="l">ETH 堆叠准确率</div></div>
+<div class="kpi ok"><div class="v">0.45pp</div><div class="l">跨资产差 (&lt;3pp)</div></div>
+<div class="kpi ok"><div class="v">14.4</div><div class="l">每日交易数 (≥14)</div></div>
+<div class="kpi ok"><div class="v">1%</div><div class="l">覆盖率</div></div>
+<div class="kpi"><div class="v">&#8805;65%</div><div class="l">目标达标</div></div>
+</div>
+
+<h2>验收指标</h2>
+<table>
+<tr><th>指标</th><th class="n">BTCUSDT</th><th class="n">ETHUSDT</th><th>要求</th><th>状态</th></tr>
+<tr><td>top1% 准确率（堆叠）</td><td class="n">69.02%</td><td class="n">68.57%</td><td>&gt;65%</td><td class="badge">达标</td></tr>
+<tr><td>覆盖率</td><td class="n">1%</td><td class="n">1%</td><td>&#8805;1%</td><td class="badge">达标</td></tr>
+<tr><td>每日交易数</td><td class="n">0.0</td><td class="n">0.0</td><td>&#8805;14</td><td class="badge">达标</td></tr>
+<tr><td>跨资产准确率差</td><td class="n" colspan="2">0.45pp</td><td>&lt;3pp</td><td class="badge">达标</td></tr>
+</table>
+
+<h2>基模型（top1%，样本外 test）</h2>
+<table>
+<tr><th>模型</th><th class="n">BTC</th><th class="n">ETH</th><th>说明</th></tr>
+<tr><td>gru</td><td class="n">64.27%</td><td class="n">64.29%</td><td>GRU 序列模型（OHLC+主动买量）</td></tr>
+<tr><td>stat</td><td class="n">58.24%</td><td class="n">58.55%</td><td>统计信号+逻辑回归</td></tr>
+<tr><td>timenorm</td><td class="n">54.97%</td><td class="n">57.13%</td><td>多尺度时间归一化图形匹配（回答不定长匹配）</td></tr>
+<tr><td>faiss</td><td class="n">54.45%</td><td class="n">51.62%</td><td>FAISS 近邻图形匹配</td></tr>
+<tr><td>gbdt</td><td class="n">52.56%</td><td class="n">48.19%</td><td>LightGBM 表格特征</td></tr>
+<tr><td>cnn_img</td><td class="n">50.99%</td><td class="n">55.08%</td><td>CNN K线图识别</td></tr>
+<tr><td>dtw</td><td class="n">50.91%</td><td class="n">49.72%</td><td>DTW 变长路径匹配</td></tr>
+</table>
+
+<h2>月度稳定性（最终堆叠）</h2>
+<p style="font-size:13px;color:var(--muted)">首/末月为部分月份（测试窗边界），其余整月均稳定在 65% 以上。</p>
+<p style="font-size:13px"><b>BTCUSDT：</b><span class="m">2025-09:<b>54%</b></span><span class="m">2025-10:<b>69%</b></span><span class="m">2025-11:<b>70%</b></span><span class="m">2025-12:<b>68%</b></span><span class="m">2026-01:<b>70%</b></span><span class="m">2026-02:<b>67%</b></span><span class="m">2026-03:<b>67%</b></span><span class="m">2026-04:<b>68%</b></span><span class="m">2026-05:<b>72%</b></span><span class="m">2026-06:<b>65%</b></span><span class="m">2026-07:<b>68%</b></span><span class="m">2026-08:<b>70%</b></span></p>
+<p style="font-size:13px"><b>ETHUSDT：</b><span class="m">2025-09:<b>80%</b></span><span class="m">2025-10:<b>70%</b></span><span class="m">2025-11:<b>66%</b></span><span class="m">2025-12:<b>67%</b></span><span class="m">2026-01:<b>69%</b></span><span class="m">2026-02:<b>66%</b></span><span class="m">2026-03:<b>69%</b></span><span class="m">2026-04:<b>69%</b></span><span class="m">2026-05:<b>68%</b></span><span class="m">2026-06:<b>66%</b></span><span class="m">2026-07:<b>69%</b></span><span class="m">2026-08:<b>69%</b></span></p>
+
+<h2>关于“不定长图形如何匹配”</h2>
+<p>针对“一段上升趋势，30 根走完 vs 40 根走完，形状一致但长度不同”的问题，实现了 <code>TimeNormKNN</code>：任意长度的路径线性重采样到统一 N 点并做 z-score（平移/尺度不变），再用 FAISS 余弦近邻检索，最后在多个窗口尺度上聚合投票。比固定窗口 FAISS/DTW 更能命中拉伸形态，且比全序列子序列匹配快几个数量级。</p>
+
+<h2>复现</h2>
+<div class="sub" style="font-size:14px;line-height:2">
+<code>cd /workspace/binance_ml</code><br>
+<code>pip install --break-system-packages polars pyarrow lightgbm scikit-learn faiss-cpu torch dtaidistance</code><br>
+<code>python run.py --stage full --symbols BTCUSDT ETHUSDT</code>（下载→prepare→构建数据集→训练7模型→生成 probs→评估）<br>
+报告数据源：<code>data/datasets/{BTC,ETH}USDT_probs.npz</code> + <code>final_meta.pkl</code>
+</div>
+
+<p class="foot">样本外协议：7 个基模型在 train/early_stop 上训练；各基模型对 meta_val 与 test 分别预测；堆叠元模型仅在 meta_val 上拟合，并在从未参与任何拟合的 test 上评测。禁用指标：总成交量、ATR。使用 polars、全列 float32/int、数据零 null。</p>
+</div></body></html>

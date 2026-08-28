@@ -1,0 +1,16 @@
+# 大数据/产物（不进版本库）
+data/
+models_saved/
+*.npy
+*.npz
+*.pkl
+
+# 日志
+*.log
+
+# Python
+__pycache__/
+*.pyc
+
+# 系统
+.DS_Store
