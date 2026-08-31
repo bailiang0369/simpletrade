@@ -1,0 +1,25 @@
+# 数据
+data/
+*.npy
+*.npz
+
+# 缓存
+__pycache__/
+*.pyc
+.cache/
+*.egg-info/
+
+# 日志
+*.log
+*.out
+
+# 生成文件
+results/
+*.html
+
+# 保存的模型
+models_saved/
+
+# 系统
+.DS_Store
+Thumbs.db

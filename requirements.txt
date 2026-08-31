@@ -1,0 +1,24 @@
+# simpletrade 运行依赖清单
+# 安装:  pip install -r requirements.txt
+# 说明:  python >= 3.9
+
+# ============ 数据层 (fetch_data / build_dataset / features) ============
+# 注: 不用 pandas, 统一以 polars/numpy 处理(大数据量更省内存)。
+numpy
+polars
+pyarrow
+
+# 共享库 bn_load (从 GitHub Release 拉取/拼接 parquet)
+requests
+
+# ============ 机器学习 (单模型训练 / 堆叠集成 / 评估) ============
+# lgbm 训练输入会从 polars 转 pandas DataFrame 喂入, 故需要 pandas。
+numpy
+pandas
+scikit-learn
+lightgbm
+
+# ============ 深度 / 序列 / 检索模型 (models/ 包) ============
+# 注意: 以下供 models/ 包使用; 若你的运行环节不涉及 GRU/CNN/FAISS 可酌情省略。
+torch
+faiss-cpu
