@@ -45,7 +45,7 @@ class AssetContext:
         self.label = pq.read_table(ds_p, columns=["label"])["label"].to_numpy().astype(np.int8)
         self.ret_future = pq.read_table(ds_p, columns=["ret_future"])["ret_future"].to_numpy().astype(np.float32)
         # Xall 惰性加载: 仅表型模型(GBDT/stat)需要, 序列/图形模型只用 raw 通道,
-        # 避免 4GB cgroup 下无条件加载 1.2GB 特征矩阵拖垮 CNN/GRU/FAISS/DTW。
+        # 避免 4GB cgroup 下无条件加载 1.2GB 特征矩阵拖垮训练进程。
         n, nf = len(self.ds_ts), len(self.feat_names)
         self._Xall = None
         self._Xall_shape = (n, nf)

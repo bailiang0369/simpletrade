@@ -28,19 +28,7 @@ MODEL_FACTORY = {
     "lstm": SeqGBDLSTM,
 }
 
-# 缺失/未就绪的模型模块: 用 try/except 保护, 避免整个训练入口崩溃
-for _mod, _name in (("dl_seq", "GRUModel"), ("pattern", None)):
-    try:
-        if _name:
-            _m = __import__(f"models.{_mod}", fromlist=[_name])
-            MODEL_FACTORY[getattr(_m, _name).name] = getattr(_m, _name)
-        else:
-            _m = __import__(f"models.{_mod}")
-            for _cls in ("CNNImageModel", "DTWKNN", "FAISSNN", "TimeNormKNN"):
-                if hasattr(_m, _cls):
-                    MODEL_FACTORY[getattr(_m, _cls).name] = getattr(_m, _cls)
-    except Exception as _e:
-        print(f"[train_one] 模型模块 models.{_mod} 未加载: {_e}", flush=True)
+# 注: 只加载已实现的模型, 不加载已删除的 FAISS/CNN/DTW/TimeNorm 等废弃模块
 
 
 def main():

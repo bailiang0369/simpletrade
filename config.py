@@ -43,26 +43,8 @@ SPLITS = {
 # ---- 计算资源 ----
 N_JOBS = 3
 N_DL_SAMPLES = 400_000          # 深度模型训练抽样规模（过快、尽量覆盖多种状态）
-CNN_SAMPLES = 12_000            # CNN 图像内存占用大(HxWx3x4B/样本), 单独限制(4GB cgroup 下需克制)
-CNN_ES_SAMPLES = 4_000
 DL_EPOCHS = 5
 BATCH_SIZE = 1024
-GRU_HIDDEN = 128
-PATTERN_TEMPLATES = 4000        # 模式识别模板数量
-DTW_TEMPLATES = 3000            # DTW 模板数量
-DTW_CAND = 8                    # FAISS 预筛后做 DTW 的近邻数
-DTW_WINDOW = 20                 # DTW 使用的降采样窗口长度
-
-# ---- 变长图形匹配(时间归一化) ----
-# 多尺度窗口: 同一形态在30根/40根等不同长度上完成时, 先重采样到固定N点再匹配
-TN_WINDOWS = [16, 32, 48, 64, 96, 128]   # 候选窗口尺度(分钟)
-TN_N = 24                                 # 重采样后的固定点数(时间归一化)
-TN_TEMPLATES = 90_000                     # 每个尺度的模板数
-TN_K = 64                                 # 每尺度近邻数
-TN_NLIST = 256
-TN_NPROBE = 24
-# DTW 变长模板尺度
-DTW_WINDOWS = [48, 96]
 
 # ---- 随机种子 ----
 SEED = 42
