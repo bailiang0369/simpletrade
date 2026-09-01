@@ -187,6 +187,34 @@ def build_features(df: pl.DataFrame) -> pl.DataFrame:
     rng_r = rng.rolling_max(30)
     e["max_range_30"] = rng_r / (rng.rolling_mean(240) + EPS)
 
+    # ---- 增强: 交叉特征 (提升树模型区分度) ----
+    pos_30 = e["pos_30"]; pos_120 = e["pos_120"]
+    tbr_z_30 = e["tbr_z_30"]
+    rvol_60 = e["rvol_60"]; rvol_30 = e["rvol_30"]
+    cvd_30 = e["cvd_30"]; cvd_60 = e["cvd_60"]
+    di_plus = e["di_plus"]; di_minus = e["di_minus"]
+    mom_60 = e["mom_60"]
+    z_30 = e["z_30"]; z_120 = e["z_120"]
+    # 价格位置 × 买量强度: 高位+买量强 = 突破信号
+    e["pos_tbr_interact"] = pos_30 * tbr_z_30
+    # 波动率 × 动量: 高波动+强动量 = 趋势延续
+    e["vol_mom_interact"] = rvol_60 * mom_60 / 100
+    # 价格位置 × 主动净买: 低位+买量涌入 = 反弹信号
+    e["pos_cvd_interact"] = (1 - pos_120) * cvd_60
+    # DMI 方向差: DI+ - DI- 的强度, 正值=多头趋势
+    e["di_spread"] = di_plus - di_minus
+    # DMI 确认: DI+ > DI- 且位置高
+    e["di_uptrend"] = (di_plus > di_minus).cast(pl.Float32) * pos_30
+    # 动量 × 波动率方向: 动量向上且波动扩张
+    e["mom_vol_confirm"] = (mom_60 > 0).cast(pl.Float32) * (rvol_60 / (rvol_30 + EPS))
+    # Z分数差值: 短周期偏离vs长周期均值回归张力
+    e["z_divergence"] = z_30 - z_120
+    # CVD 加速度: 短期净买与中期净买之差
+    cvd_5 = e["cvd_5"] if "cvd_5" in e else (TB - TS).rolling_sum(5) / ((TB + TS).rolling_sum(5) + EPS)
+    e["cvd_accel"] = cvd_5 - cvd_30
+    # 波动率 × CVD: 高波动+强买量 = 方向性信号
+    e["vol_cvd_interact"] = rvol_60 * cvd_30
+
     out = df.select([expr.alias(name) for name, expr in e.items()])
 
     # ---- 连续同向K线 (需临时分组列) ----

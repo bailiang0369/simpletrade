@@ -76,6 +76,7 @@ class FaissShapeModel(BaseModel):
         self.max_train = max_train
         self.kms = {}            # {scale_name: faiss.Kmeans}
         self.edge_map = {}       # {scale_name: np.array[edge]} 每个cluster的胜率偏移
+        self.n_samples_map = {}  # {scale_name: np.array[int]} 每个cluster的样本量
         self.scale_feat_map = {} # {scale_name: feat_name} 每个尺度用的特征名
         self.scale_cfg_map = {}  # {scale_name: {'window': w, 'n_clusters': n, 'repeat': r}}
         self.fitted = False
@@ -113,7 +114,13 @@ class FaissShapeModel(BaseModel):
         return np.ascontiguousarray(norm, dtype=np.float32)
 
     def _train_one_scale(self, name, cfg, tr_data, tr_labels, is_indicator, feat_name=None):
-        """训练单个尺度的聚类和计算edge。"""
+        """训练单个尺度的聚类和计算edge。
+        
+        改进:
+          - 增大 niter 从 40 到 100 + nredo=3 确保收敛
+          - 贝叶斯平滑 edge: 小 cluster 向 0 收缩, 避免噪声估计
+          - 记录每个 cluster 的样本量用于测试时权重
+        """
         w = cfg['window']
         n_c = cfg['n_clusters']
         r_count = cfg.get('repeat', 0)
@@ -124,25 +131,34 @@ class FaissShapeModel(BaseModel):
             print(f"[faiss_shape] {name}: 数据不足，跳过", flush=True)
             return
 
-        # FAISS K-Means训练
+        # FAISS K-Means训练 (增大niter确保收敛, nredo避免局部最优)
         dim = windows.shape[1]
-        km = faiss.Kmeans(dim, n_c, niter=40, verbose=False, seed=self.seed)
+        km = faiss.Kmeans(dim, n_c, niter=100, nredo=3, verbose=False, seed=self.seed)
         km.train(windows)
         _, ids = km.index.search(windows, 1)
         ids = ids.flatten()  # (n_windows,)
 
-        # 计算每个cluster的edge (胜率 - 0.5)
+        # 计算每个cluster的edge (胜率 - 0.5) + 贝叶斯平滑
         labels_w = tr_labels[w-1:]
         edge = np.zeros(n_c, dtype=np.float32)
+        n_samples_per_cluster = np.zeros(n_c, dtype=np.int32)
         for cid in range(n_c):
             mask = (ids == cid)
-            if mask.sum() > 0:
-                edge[cid] = labels_w[mask].mean() - 0.5
+            n_s = mask.sum()
+            n_samples_per_cluster[cid] = n_s
+            if n_s > 0:
+                raw_edge = labels_w[mask].mean() - 0.5
+                # 贝叶斯收缩: 样本量少的 cluster 向 0 收缩
+                # 先验强度 n_prior = 100, 样本量 < 100 时强烈收缩
+                n_prior = 100
+                shrink = n_s / (n_s + n_prior)
+                edge[cid] = raw_edge * shrink
             else:
                 edge[cid] = 0.0
 
         self.kms[name] = km
         self.edge_map[name] = edge
+        self.n_samples_map[name] = n_samples_per_cluster  # 记录样本量
         if feat_name:
             self.scale_feat_map[name] = feat_name
         self.scale_cfg_map[name] = {'window': w, 'n_clusters': n_c, 'repeat': r_count}
@@ -183,7 +199,10 @@ class FaissShapeModel(BaseModel):
         return self
 
     def _predict_one_scale(self, name, cfg, data_array, is_indicator):
-        """预测单个尺度: 返回每个位置的edge得分。"""
+        """预测单个尺度: 返回每个位置的edge得分。
+        
+        改进: 距离加权投票 (top-3 最近簇), 距离越远权重越低。
+        """
         w = cfg['window']
         r_count = cfg.get('repeat', 0)
         km = self.kms[name]
@@ -193,12 +212,17 @@ class FaissShapeModel(BaseModel):
         if len(windows) == 0:
             return np.zeros(len(data_array), dtype=np.float32)
 
-        _, ids = km.index.search(windows, 1)
-        ids = ids.flatten()
+        # 距离加权投票: 取 top-3 最近簇
+        k = min(3, len(edges))
+        dists, ids = km.index.search(windows, k)
+        # 距离转权重: 距离越近权重越大
+        weights = 1.0 / (dists.astype(np.float32) + 1e-10)
+        weights = weights / weights.sum(axis=1, keepdims=True)
+        # 加权 edge
+        weighted_edge = np.sum(edges[ids] * weights, axis=1)
 
-        # 得分 = 每个位置对应cluster的edge
         scores = np.zeros(len(data_array), dtype=np.float32)
-        scores[w-1:] = edges[ids]
+        scores[w-1:] = weighted_edge
         return scores
 
     def predict(self, ctx, split):
@@ -238,10 +262,11 @@ class FaissShapeModel(BaseModel):
         return prob.astype(np.float32)
 
     def save(self, path):
-        """保存模型: kms + edge_map。"""
+        """保存模型: kms + edge_map + n_samples_map。"""
         state = {
             'config': self.config,
             'edge_map': self.edge_map,
+            'n_samples_map': self.n_samples_map,
             'centroids': {name: km.centroids for name, km in self.kms.items()},
             'n_clusters': {name: km.k for name, km in self.kms.items()},
             'scale_feat_map': self.scale_feat_map,
@@ -255,6 +280,7 @@ class FaissShapeModel(BaseModel):
         state = joblib.load(f"{path}.joblib")
         self.config = state['config']
         self.edge_map = state['edge_map']
+        self.n_samples_map = state.get('n_samples_map', {})
         self.scale_feat_map = state.get('scale_feat_map', {})
         self.scale_cfg_map = state.get('scale_cfg_map', {})
         self.kms = {}

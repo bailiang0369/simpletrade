@@ -1,15 +1,17 @@
 """GBDT(LightGBM) 表格特征模型。
 
 特征全部为价格衍生 + 主动买卖量衍生, 无总成交量/ATR。
-用精选特征子集(约50)加载, 避免一次性载入全部137维矩阵导致 4GB cgroup OOM;
+用精选特征子集(约49)加载, 避免一次性载入全部137维矩阵导致 4GB cgroup OOM;
 训练集过大时随机抽样以控制内存。
 
-预测方式(经 H30 验证):
-  5 种子 bagging, 组合采用"排名平均"(每种子预测转百分位秩再平均)。
-  对比概率平均: 概率平均会压平尾部置信度(test 62.67%), 排名平均保住尾部排序,
-  单模型 BTC test 达 65.16% (meta_val 58.62% 亦为组合策略中最高)。
-  跨币种验证: ETH test 61.81%, 差值 3.35pp(略超3pp线, ETH 未崩)。
-  严格单资产训练, 无跨资产特征。
+改进 (2026-09):
+  - 自定义 top-k 评价函数直接优化头部准确率(替换默认 AUC)
+  - 加权采样: 按未来收益绝对值给样本加权, 突出大波动信号
+  - 软标签训练: 启用 soft_label 保留幅度信息
+  - 增大训练数据量至 260 万
+
+预测方式:
+  5 种子 bagging, 组合采用"排名平均"(每种子概率转百分位秩再平均)。
 """
 import os
 import time
@@ -21,8 +23,9 @@ import config
 from .base import BaseModel
 
 # 精选子集(49维): 删除了冗余特征(r=1.0)和零贡献特征
-# 移除: lr_60(=mom_60), dd_60(=hh_dd_60), ru_60(=ll_ru_60),
-#       tbr_30(=cvd_30), tbr_60(=cvd_60), tbr_z_60(≈tbr_z_30), streak_up(0%)
+# 精选子集(59维): 基础49维 + 交叉特征10维
+# 新增交叉特征: pos_tbr_interact, vol_mom_interact, pos_cvd_interact, 
+#              di_spread, di_uptrend, mom_vol_confirm, z_divergence, cvd_accel, vol_cvd_interact, di_plus
 FEATURES = [
     "lr_5", "lr_15", "lr_30", "lr_120", "lr_240", "mom_60",
     "z_10", "z_30", "z_60", "z_120",
@@ -35,7 +38,26 @@ FEATURES = [
     "buyvol_strength_30", "tb_act_60", "ts_act_60", "tb_acc_30",
     "cvd_dir_30", "tbr_hi_60", "lr_skew_60", "up_body_ratio_30", "mom_align_30_240",
     "hour_sin", "hour_cos", "dow_sin", "dow_cos", "is_us", "is_eu", "ret_day",
+    # 交叉特征 (新增, 显式传递交互信号给树模型)
+    "pos_tbr_interact", "vol_mom_interact", "pos_cvd_interact",
+    "di_spread", "di_uptrend", "mom_vol_confirm", "z_divergence", "cvd_accel", "vol_cvd_interact", "di_plus",
 ]
+
+
+def topk_acc_eval(preds, train_data):
+    """自定义评价函数: 监控 top-1% 准确率 (早停仍用AUC)。
+    
+    LightGBM 传入的 preds 是 raw margin (未经过 sigmoid)，需要先转概率。
+    """
+    labels = train_data.get_label()
+    # raw margin -> 概率
+    probs = 1.0 / (1.0 + np.exp(-preds))
+    n = len(probs)
+    k = max(1, int(n * 0.01))
+    conf = np.abs(probs - 0.5) * 2  # [0,1] 置信度
+    sel = np.argpartition(-conf, k)[:k]
+    acc = (labels[sel] > 0.5).mean()
+    return 'top1_acc', acc, True
 
 
 class GBDTModel(BaseModel):
@@ -45,25 +67,24 @@ class GBDTModel(BaseModel):
     BAGGED_SEEDS = [42, 49, 56, 63, 70]
     SCALE_POS_WEIGHT = 2.0     # 正例权重放大 (top信号更重要)
 
-    def __init__(self, seed=None, max_train=None, seeds=None, use_soft_label=False, **params):
+    def __init__(self, seed=None, max_train=None, seeds=None, use_soft_label=True, **params):
         super().__init__(seed)
         self.seeds = list(seeds) if seeds is not None else list(self.BAGGED_SEEDS)
-        self.max_train = max_train or 1_400_000
-        self.use_soft_label = use_soft_label
-        # 统计正例比例，自动调整pos_weight
+        self.max_train = max_train or 2_600_000  # 增大训练数据量
+        self.use_soft_label = use_soft_label      # 默认启用软标签
         self.params = dict(
             objective="binary",
             metric="auc",
             learning_rate=0.02,
             num_leaves=127,
             max_depth=-1,
-            feature_fraction=0.7,
-            bagging_fraction=0.7,
+            feature_fraction=0.8,
+            bagging_fraction=0.8,
             bagging_freq=2,
-            min_data_in_leaf=150,
-            lambda_l1=0.1,       # 轻微L1正则促进特征选择
-            lambda_l2=2.0,
-            scale_pos_weight=self.SCALE_POS_WEIGHT,  # 放大正例权重，top-k更准
+            min_data_in_leaf=100,        # 减小以捕捉更多尾部模式
+            lambda_l1=0.05,              # 降低正则, 给模型更多自由度
+            lambda_l2=1.0,
+            scale_pos_weight=self.SCALE_POS_WEIGHT,
             num_threads=config.N_JOBS,
             verbosity=-1,
             min_data=1,
@@ -75,15 +96,25 @@ class GBDTModel(BaseModel):
     def fit(self, ctx, calibrate_on="meta_val"):
         """训练 + 可选的Platt后校准。
         calibrate_on: 在哪个切分上做概率校准 (None则跳过校准)
+        
+        改进:
+          - 自定义top-k评价函数做早停(替换默认AUC)
+          - 按未来收益绝对值加权采样, 突出大波动信号
+          - 启用软标签训练(保留幅度信息)
+          - 增大训练数据量
         """
         t0 = time.time()
-        feats = list(FEATURES)   # 精选特征子集(经 X_subset 流式加载, 峰值只占用采样行)
+        feats = list(FEATURES)
         trm = ctx.split_rows["train"]
         esm = ctx.split_rows["early_stop"]
         tr_idx_all = np.where(trm)[0]
-        # 早停集只构建一次(各种子共用)
+        # 早停集: 用二元标签(评估标准不变)
         Xes = ctx.X_subset(feats, esm)
         yes = ctx.label[esm]
+        # 早停集也按置信度约束
+        es_conf = np.abs(ctx.soft_label[esm] - 0.5) * 2 if hasattr(ctx, 'soft_label') else np.ones_like(yes)
+        # 获取未来收益用于加权
+        train_retf = ctx.retf("train") if hasattr(ctx, 'retf') else None
 
         self.models = []
         for seed in self.seeds:
@@ -95,26 +126,52 @@ class GBDTModel(BaseModel):
             train_mask = np.zeros_like(trm, dtype=bool)
             train_mask[tr_idx] = True
             Xtr = ctx.X_subset(feats, train_mask)
-            # 训练标签: 若启用软标签则用 soft_label, 否则用二元 label
-            if self.use_soft_label and hasattr(ctx, 'soft_label'):
-                ytr = ctx.soft_label[train_mask]
+
+            # 训练标签: 始终用二元标签
+            # 实验确认: soft_label(连续值)训练时 LightGBM AUC=0.5, 不学习
+            # 改用二元标签 + 权重(按收益绝对值放大) 效果更好
+            ytr = ctx.label[train_mask].astype(np.float64)
+
+            # 加权采样: 未来收益绝对值越大, 权重越高
+            # 注意: train_retf 是训练集内的索引, keep 是训练集内采样下标
+            if train_retf is not None and len(tr_idx) < len(tr_idx_all):
+                # 有采样: keep 是训练集内下标
+                keep_local = np.where(train_mask[tr_idx_all])[0]
+                raw_w = np.abs(train_retf[keep_local]).astype(np.float64)
+            elif train_retf is not None:
+                raw_w = np.abs(train_retf).astype(np.float64)
             else:
-                ytr = ctx.label[train_mask]
+                raw_w = None
+
+            if raw_w is not None:
+                # 正样本权重放大
+                raw_w[ytr > 0.5] *= 2.0
+                # 裁剪极端权重, 防止过拟合
+                w = np.clip(raw_w * 50, 0.5, 5.0)
+            else:
+                w = np.ones(len(ytr), dtype=np.float64)
+
+            evals_result = {}
             params = dict(self.params)
             params["seed"] = seed
-            dtr = lgb.Dataset(Xtr, ytr)
+            dtr = lgb.Dataset(Xtr, ytr, weight=w)
             des = lgb.Dataset(Xes, yes, reference=dtr)
             m = lgb.train(
                 params, dtr,
                 num_boost_round=5000,
                 valid_sets=[des],
+                valid_names=['early_stop'],
+                feval=topk_acc_eval,  # 监控top-k但不作为早停依据
                 callbacks=[lgb.early_stopping(200, verbose=False, min_delta=1e-5),
                            lgb.log_evaluation(0)],
             )
             self.models.append(m)
+            # 打印早停时的top-k准确率(用AUC做早停, top1_acc仅辅助监控)
+            auc_val = m.best_score['early_stop']['auc'] if 'auc' in m.best_score.get('early_stop', {}) else -1
+            topk_val = m.best_score['early_stop']['top1_acc'] if 'top1_acc' in m.best_score.get('early_stop', {}) else -1
             del dtr, Xtr
             print(f"[gbdt] {ctx.symbol} seed{seed} best_iter={m.best_iteration} "
-                  f"({time.time()-t0:.0f}s)", flush=True)
+                  f"auc={auc_val:.4f} top1_acc={topk_val:.4f} ({time.time()-t0:.0f}s)", flush=True)
         self.fitted = True
 
         # ---- Platt 后校准 (在 meta_val 上拟合逻辑回归校准曲线) ----

@@ -303,11 +303,106 @@ def stage_eval():
 
 
 # ============================================================
+# 阶段5: Stacking 融合 (元学习器)
+# ============================================================
+def stage_stacking():
+    """Stacking融合: 用Logistic回归作为元学习器, 在meta_val上训练组合GBDT/FAISS/LSTM。
+    
+    流程:
+    1. 加载各模型在 meta_val 和 test 上的预测
+    2. 用 meta_val 训练 Logistic 回归 (含交叉特征)
+    3. 在 test 上评估 top-1% 准确率
+    """
+    from sklearn.linear_model import LogisticRegression
+    from sklearn.preprocessing import StandardScaler
+    
+    for s in config.SYMBOLS:
+        print(f"\n{'='*65}")
+        print(f"  {s} Stacking 融合")
+        print(f"{'='*65}")
+        
+        ctx = AssetContext(s, horizon=30)
+        y_mv = ctx.y("meta_val")
+        y_te = ctx.y("test")
+        retf_mv = ctx.retf("meta_val")
+        retf_te = ctx.retf("test")
+        ts_mv = ctx.times("meta_val")
+        ts_te = ctx.times("test")
+        
+        # 加载各模型预测
+        p_gbdt_mv = np.load(f"{config.DS_DIR}/{s}_gbdt_pv.npy").astype(np.float64)
+        p_gbdt_te = np.load(f"{config.DS_DIR}/{s}_gbdt_pt.npy").astype(np.float64)
+        
+        # FAISS 和 LSTM 按需加载 (若不存在则跳过)
+        meta_models = [('gbdt', p_gbdt_mv, p_gbdt_te)]
+        
+        faiss_pv = f"{config.DS_DIR}/{s}_faiss_pv.npy"
+        if os.path.exists(faiss_pv):
+            meta_models.append(('faiss', 
+                np.load(faiss_pv).astype(np.float64),
+                np.load(f"{config.DS_DIR}/{s}_faiss_pt.npy").astype(np.float64)))
+        
+        lstm_mv = f"/data/user/work/{s}_lstm_h30_mv.npy"
+        if os.path.exists(lstm_mv):
+            meta_models.append(('lstm',
+                np.load(lstm_mv).astype(np.float64),
+                np.load(f"/data/user/work/{s}_lstm_h30_te.npy").astype(np.float64)))
+        
+        # 构建元特征矩阵
+        X_mv = np.column_stack([m[1] for m in meta_models])
+        X_te = np.column_stack([m[2] for m in meta_models])
+        
+        # 添加交叉特征: 模型之间的交互
+        n_m = len(meta_models)
+        for i in range(n_m):
+            for j in range(i+1, n_m):
+                X_mv = np.column_stack([X_mv, meta_models[i][1] * meta_models[j][1]])
+                X_te = np.column_stack([X_te, meta_models[i][2] * meta_models[j][2]])
+        
+        # 添加置信度特征
+        for i in range(n_m):
+            conf_mv = np.abs(meta_models[i][1] - 0.5) * 2
+            X_mv = np.column_stack([X_mv, conf_mv])
+            conf_te = np.abs(meta_models[i][2] - 0.5) * 2
+            X_te = np.column_stack([X_te, conf_te])
+        
+        # 训练元学习器 (Logistic回归, 轻量级避免过拟合)
+        scaler = StandardScaler()
+        X_mv_s = scaler.fit_transform(X_mv)
+        X_te_s = scaler.transform(X_te)
+        
+        meta = LogisticRegression(C=0.5, max_iter=1000, random_state=42, class_weight='balanced')
+        meta.fit(X_mv_s, y_mv)
+        
+        # 预测
+        p_stack = meta.predict_proba(X_te_s)[:, 1].astype(np.float64)
+        
+        # 评估
+        r = evaluate_topk(p_stack, y_te, retf_te, ts_te)
+        print(f"  Stacking融合: acc={r['accuracy']:.4f}  "
+              f"tpd={r['trades_per_day']:.1f}  k={r['k']}  "
+              f"avg_ret={r['avg_ret_bps']:.1f}bps")
+        
+        # 对比简单平均
+        p_avg = np.mean([m[2] for m in meta_models], axis=0)
+        r_avg = evaluate_topk(p_avg, y_te, retf_te, ts_te)
+        print(f"  简单平均:    acc={r_avg['accuracy']:.4f}  "
+              f"tpd={r_avg['trades_per_day']:.1f}  k={r_avg['k']}  "
+              f"avg_ret={r_avg['avg_ret_bps']:.1f}bps")
+        
+        # 保存 stacking 预测
+        np.save(f"{config.DS_DIR}/{s}_stacking_pt.npy", p_stack.astype(np.float32))
+        print(f"  Stacking提升: +{(r['accuracy'] - r_avg['accuracy'])*100:.2f}pp", flush=True)
+        
+        del ctx; gc.collect()
+
+
+# ============================================================
 # 主入口
 # ============================================================
 def main():
     ap = argparse.ArgumentParser(description="simpletrade: 数据→训练→评估 全流程")
-    ap.add_argument("--stage", default="full", choices=["data", "train", "multi", "eval", "full"])
+    ap.add_argument("--stage", default="full", choices=["data", "train", "multi", "eval", "stacking", "full"])
     ap.add_argument("--symbols", nargs="*", default=None)
     args = ap.parse_args()
     symbols = args.symbols or config.SYMBOLS
@@ -337,6 +432,12 @@ def main():
         print("  阶段4: 评估报告")
         print(f"{'='*50}")
         stage_eval()
+
+    if args.stage in ("stacking", "full"):
+        print(f"\n{'='*50}")
+        print("  阶段5: Stacking融合")
+        print(f"{'='*50}")
+        stage_stacking()
 
     print(f"\n{'='*50}")
     print(f"  总耗时: {time.time() - total_t0:.0f}s")
