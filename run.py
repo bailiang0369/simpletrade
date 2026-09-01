@@ -122,7 +122,6 @@ from evaluate import evaluate_topk
 from models.seq_lstm import SeqGBDLSTM, build_sequence_feats, build_ds_matrix
 
 ctx = AssetContext('{s}')
-import models.seq_lstm as sl; sl.MAX_TRAIN = 200_000
 lm = SeqGBDLSTM(seed=42); lm.fit(ctx); gc.collect()
 F = build_sequence_feats(ctx.o, ctx.h, ctx.l, ctx.c, ctx.tb, ctx.vol)
 

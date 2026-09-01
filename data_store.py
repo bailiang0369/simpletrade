@@ -40,9 +40,10 @@ class AssetContext:
         # ---- 特征数据集: 按列逐个读入预分配矩阵(峰值=1列) ----
         ds_p = f"{config.DS_DIR}/ds_{symbol}.parquet"
         cols = pq.read_schema(ds_p).names
-        self.feat_names = [c for c in cols if c not in ("label", "ret_future", "ts")]
+        self.feat_names = [c for c in cols if c not in ("label", "soft_label", "ret_future", "ts")]
         self.ds_ts = pq.read_table(ds_p, columns=["ts"])["ts"].to_numpy().astype(np.int64)  # 秒
         self.label = pq.read_table(ds_p, columns=["label"])["label"].to_numpy().astype(np.int8)
+        self.soft_label = pq.read_table(ds_p, columns=["soft_label"])["soft_label"].to_numpy().astype(np.float32)
         self.ret_future = pq.read_table(ds_p, columns=["ret_future"])["ret_future"].to_numpy().astype(np.float32)
         # Xall 惰性加载: 仅表型模型(GBDT/stat)需要, 序列/图形模型只用 raw 通道,
         # 避免 4GB cgroup 下无条件加载 1.2GB 特征矩阵拖垮训练进程。
@@ -98,6 +99,9 @@ class AssetContext:
 
     def y(self, name):
         return self.label[self.split_rows[name]]
+
+    def soft_y(self, name):
+        return self.soft_label[self.split_rows[name]]
 
     def retf(self, name):
         return self.ret_future[self.split_rows[name]]
@@ -181,7 +185,7 @@ class AssetContext:
                     else:
                         img[0, top:bot + 1, j] = 1.0
                         img[0, btop:bbot + 1, j] = 1.0
-                img[2, :, j] = tbw[j]
+                    img[2, :, j] = tbw[j]
         return out
 
     def embed_vectors(self, positions, W=None, chunk=50000):

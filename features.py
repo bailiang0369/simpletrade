@@ -70,6 +70,32 @@ def build_features(df: pl.DataFrame) -> pl.DataFrame:
     # ---- 缺口 ----
     e["gap"] = (O - C.shift(1)) / (C.shift(1) + EPS) * 100
 
+    # ---- 随机指标 (Stochastic K) 长周期 ----
+    for k in [29, 50, 69]:
+        lo_k = L.rolling_min(k)
+        hi_k = H.rolling_max(k)
+        e[f"stoch_k_{k}"] = (C - lo_k) / (hi_k - lo_k + EPS)
+
+    # ---- DMI 方向动量 (DI+ / DI-) ----
+    # 真波幅 TR
+    tr = pl.max_horizontal(
+        H - L,
+        (H - C.shift(1)).abs(),
+        (L - C.shift(1)).abs(),
+    ) + EPS
+    # 方向运动
+    h_up = H - H.shift(1)
+    l_dn = L.shift(1) - L
+    pos_dm = pl.when((h_up > 0) & (h_up > l_dn)).then(h_up).otherwise(0.0)
+    neg_dm = pl.when((l_dn > 0) & (l_dn > h_up)).then(l_dn).otherwise(0.0)
+    # DMI 标准周期 14
+    dm_period = 14
+    tr_smooth = tr.rolling_sum(dm_period)
+    pos_dm_smooth = pos_dm.rolling_sum(dm_period)
+    neg_dm_smooth = neg_dm.rolling_sum(dm_period)
+    e["di_plus"] = pos_dm_smooth / tr_smooth
+    e["di_minus"] = neg_dm_smooth / tr_smooth
+
     # ---- 主动买卖量特征 (仅主动买/主动卖) ----
     tot = TB + TS + EPS
     tbr = TB / tot                                  # 主动买占比 [0,1]

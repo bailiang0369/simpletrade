@@ -21,11 +21,15 @@ from data_store import AssetContext
 from models.gbdt import GBDTModel
 from models.stat_signal import StatSignal
 from models.seq_lstm import SeqGBDLSTM
+from models.catboost_model import CatBoostModel
+from models.faiss_shape import FaissShapeModel
 
 MODEL_FACTORY = {
     "gbdt": GBDTModel,
     "stat": StatSignal,
     "lstm": SeqGBDLSTM,
+    "catboost": CatBoostModel,
+    "faiss": FaissShapeModel,
 }
 
 # 注: 只加载已实现的模型, 不加载已删除的 FAISS/CNN/DTW/TimeNorm 等废弃模块

@@ -18,6 +18,7 @@ from features import build_features
 CHUNK_ROWS = 1_000_000   # 每个特征计算块的原始行数
 WARMUP = 400             # 保证滚动窗口在块首有足够历史
 FEAT_DTYPES = {}         # {col: polars dtype} 由 probe 确定
+SOFT_LABEL_SCALE = 0.005  # 软标签温度参数: sigmoid(ret/scale), 0.5%=~0.73 1%=~0.88
 
 
 def build_symbol_dataset(symbol, horizon=None, overwrite=False):
@@ -46,12 +47,18 @@ def build_symbol_dataset(symbol, horizon=None, overwrite=False):
     # ---- 标签与未来收益 (全局, 内存占用小) ----
     label = np.zeros(n, dtype=np.int8)
     ret_future = np.full(n, np.nan, dtype=np.float32)
+    soft_label = np.full(n, np.nan, dtype=np.float32)
     if horizon < n:
         fut = close[horizon:]
         cur = close[:-horizon]
         label[:-horizon] = (fut > cur).astype(np.int8)
-        with np.errstate(divide="ignore"):
-            ret_future[:-horizon] = np.log(fut / cur).astype(np.float32)
+        with np.errstate(divide="ignore", over="ignore"):
+            ret = np.log(fut / cur).astype(np.float32)
+            ret_future[:-horizon] = ret
+            # 软标签: sigmoid(ret / scale), 保留涨幅大小信息作为训练辅助信号
+            # 最终评估仍用二元标签, 软标签只在训练阶段使用
+            ret_clipped = np.clip(ret / SOFT_LABEL_SCALE, -10, 10)
+            soft_label[:-horizon] = (1.0 / (1.0 + np.exp(-ret_clipped))).astype(np.float32)
 
     # ---- 探测特征列数(用 numpy 重建一个 probe 表) ----
     probe = pl.from_dict({
@@ -71,10 +78,11 @@ def build_symbol_dataset(symbol, horizon=None, overwrite=False):
     #     只在极少数跨 1M 行块边界的"当日"上有 <=400 分钟的基准偏差(仍只用当日及以前, 无未来泄漏)。
     #     此处不再重算 ret_day（旧全局重算为死代码，已移除）。
 
-    out_cols = feat_names + ["label", "ret_future", "ts"]   # ret_day 已在特征列中
+    out_cols = feat_names + ["label", "soft_label", "ret_future", "ts"]   # ret_day 已在特征列中
     # 先探测编译列类型
     pa_schema = pa.schema([(c, pa.float32()) for c in feat_names] + [
-        ("label", pa.int8()), ("ret_future", pa.float32()), ("ts", pa.int64()),
+        ("label", pa.int8()), ("soft_label", pa.float32()),
+        ("ret_future", pa.float32()), ("ts", pa.int64()),
     ])
     writer_vn = 0
     writer = None
@@ -104,6 +112,7 @@ def build_symbol_dataset(symbol, horizon=None, overwrite=False):
             # 严禁经 float32 中转(时间戳 ~1e9 超出 float32 24位精度会损坏)。
             arrays = [pa.array(F[ri, j], type=pa_schema.field(j).type) for j in range(nfeat)]
             arrays.append(pa.array(label[r_abs], type=pa.int8()))
+            arrays.append(pa.array(soft_label[r_abs], type=pa.float32()))
             arrays.append(pa.array(ret_future[r_abs], type=pa.float32()))
             arrays.append(pa.array(ts_sec[r_abs], type=pa.int64()))
             ta = pa.Table.from_arrays(arrays, schema=pa_schema)
@@ -125,7 +134,7 @@ def build_symbol_dataset(symbol, horizon=None, overwrite=False):
     # 校验写入结果零null + 类型
     ds = pl.read_parquet(out)
     assert ds.null_count().sum_horizontal().sum() == 0, "dataset still has nulls!"
-    assert ds['label'].dtype == pl.Int8 and ds['ts'].dtype == pl.Int64
+    assert ds['label'].dtype == pl.Int8 and ds['soft_label'].dtype == pl.Float32 and ds['ts'].dtype == pl.Int64
     print(f"[dataset] {symbol}: rows={ds.height}, cols={ds.width}, "
           f"label_ratio={float(ds['label'].mean()):.4f}, n_null=0[verified]")
     return out
