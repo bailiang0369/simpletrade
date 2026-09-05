@@ -134,12 +134,21 @@ def build_symbol_dataset(symbol, horizon=None, overwrite=False):
 
     print(f"[dataset] {symbol}: valid={vn_now}, "
           f"elapsed={time.time() - t0:.0f}s")
-    # 校验写入结果零null + 类型
-    ds = pl.read_parquet(out)
-    assert ds.null_count().sum_horizontal().sum() == 0, "dataset still has nulls!"
-    assert ds['label'].dtype == pl.Int8 and ds['soft_label'].dtype == pl.Float32 and ds['ts'].dtype == pl.Int64
-    print(f"[dataset] {symbol}: rows={ds.height}, cols={ds.width}, "
-          f"label_ratio={float(ds['label'].mean()):.4f}, n_null=0[verified]")
+    # 校验写入结果零null + 类型(内存受限: 按列流式读, 峰值=单列, 不整表载入)
+    import pyarrow.parquet as _pq
+    pf = _pq.ParquetFile(out)
+    assert pf.metadata.num_rows == vn_now, "row count mismatch"
+    names = pf.schema_arrow.names
+    dt = {nm: pf.schema_arrow.field(nm).type for nm in names}
+    assert dt['label'] == pa.int8() and dt['soft_label'] == pa.float32() and dt['ts'] == pa.int64()
+    tot_null = 0
+    for _nm in names:
+        _a = pf.read(columns=[_nm]).column(0)
+        tot_null += _a.null_count
+    assert tot_null == 0, "dataset still has nulls!"
+    print(f"[dataset] {symbol}: rows={vn_now}, cols={len(names)}, "
+          f"label_ratio={float(pf.read(columns=['label']).column(0).to_numpy().mean()):.4f}, "
+          f"n_null=0[verified]")
     return out
 
 
