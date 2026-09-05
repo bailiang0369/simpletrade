@@ -15,7 +15,7 @@ import polars as pl
 import config
 from features import build_features
 
-CHUNK_ROWS = 1_000_000   # 每个特征计算块的原始行数
+CHUNK_ROWS = 500_000   # 每个特征计算块的原始行数(第6轮特征增加后峰值内存上升, 减半分块避免OOM)
 WARMUP = 400             # 保证滚动窗口在块首有足够历史
 FEAT_DTYPES = {}         # {col: polars dtype} 由 probe 确定
 SOFT_LABEL_SCALE = 0.005  # 软标签温度参数: sigmoid(ret/scale), 0.5%=~0.73 1%=~0.88
@@ -39,6 +39,7 @@ def build_symbol_dataset(symbol, horizon=None, overwrite=False):
     low = raw["low"].to_numpy().astype(np.float32)
     taker_buy = raw["buy_vol"].to_numpy().astype(np.float32)      # 主动买量
     sell = raw["sell_vol"].to_numpy().astype(np.float32)          # 主动卖量
+    funding = raw["funding"].to_numpy().astype(np.float32)        # 资金费率
     # 立即释放 polars 原始表(占约300-500MB), 只用 numpy
     del raw
     gc.collect()
@@ -65,6 +66,7 @@ def build_symbol_dataset(symbol, horizon=None, overwrite=False):
         "ts": ts_sec[:300], "open": close[:300], "high": close[:300],
         "low": close[:300], "close": close[:300],
         "buy_vol": np.ones(300, np.float32) * 0.5, "sell_vol": np.ones(300, np.float32) * 0.5,
+        "funding": np.ones(300, np.float32) * 0.0001,
     })
     probe = build_features(probe)
     feat_names = probe.columns
@@ -98,6 +100,7 @@ def build_symbol_dataset(symbol, horizon=None, overwrite=False):
             "low": low[s:e], "close": close[s:e],
             "buy_vol": taker_buy[s:e],
             "sell_vol": sell[s:e],
+            "funding": funding[s:e],
         })
         F = build_features(sub_df).to_numpy()
         del sub_df
