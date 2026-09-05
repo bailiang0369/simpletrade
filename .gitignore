@@ -20,6 +20,10 @@ results/
 # 保存的模型
 models_saved/
 
+# 训练日志
+catboost_info/
+*.tfevents
+
 # 系统
 .DS_Store
 Thumbs.db
