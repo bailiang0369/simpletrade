@@ -1,0 +1,10 @@
+  [ETH] xgb 训练开始
+  [extra] 耗时 3.3s
+  [xgb] ETH seed42 iter=249 (97s)
+  [xgb] ETH seed49 iter=193 (179s)
+  [xgb] ETH seed56 iter=69 (241s)
+  [xgb] ETH seed63 iter=115 (311s)
+  [xgb] ETH seed70 iter=35 (369s)
+  [xgb] ETH meta_val P saved (376s)
+  [xgb] ETH test P saved (382s)
+  [ETH] xgb 完成 382s

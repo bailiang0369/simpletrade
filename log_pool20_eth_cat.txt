@@ -1,0 +1,10 @@
+  [ETH] cat 训练开始
+  [extra] 耗时 3.3s
+  [cat] ETH seed42 iter=85 (125s)
+  [cat] ETH seed49 iter=62 (237s)
+  [cat] ETH seed56 iter=83 (359s)
+  [cat] ETH seed63 iter=65 (476s)
+  [cat] ETH seed70 iter=80 (597s)
+  [cat] ETH meta_val P saved (600s)
+  [cat] ETH test P saved (603s)
+  [ETH] cat 完成 603s

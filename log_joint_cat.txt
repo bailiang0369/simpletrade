@@ -1,0 +1,13 @@
+  [JOINT] cat 训练开始
+  [extra] 耗时 3.4s
+  [extra] 耗时 3.4s
+  [JOINT cat] seed42 iter=94 (149s)
+  [JOINT cat] seed49 iter=116 (301s)
+  [JOINT cat] seed56 iter=81 (436s)
+  [JOINT cat] seed63 iter=81 (576s)
+  [JOINT cat] seed70 iter=95 (716s)
+  [JOINT cat] ETH meta_val P saved (719s)
+  [JOINT cat] ETH test P saved (721s)
+  [JOINT cat] BTC meta_val P saved (724s)
+  [JOINT cat] BTC test P saved (726s)
+  [JOINT] cat 完成 726s

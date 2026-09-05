@@ -1,0 +1,13 @@
+  [JOINT] xgb 训练开始
+  [extra] 耗时 3.3s
+  [extra] 耗时 3.3s
+  [JOINT xgb] seed42 iter=101 (99s)
+  [JOINT xgb] seed49 iter=53 (175s)
+  [JOINT xgb] seed56 iter=182 (278s)
+  [JOINT xgb] seed63 iter=65 (357s)
+  [JOINT xgb] seed70 iter=24 (427s)
+  [JOINT xgb] ETH meta_val P saved (433s)
+  [JOINT xgb] ETH test P saved (438s)
+  [JOINT xgb] BTC meta_val P saved (444s)
+  [JOINT xgb] BTC test P saved (449s)
+  [JOINT] xgb 完成 449s

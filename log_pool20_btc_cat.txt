@@ -1,0 +1,10 @@
+  [BTC] cat 训练开始
+  [extra] 耗时 3.5s
+  [cat] BTC seed42 iter=61 (116s)
+  [cat] BTC seed49 iter=49 (224s)
+  [cat] BTC seed56 iter=63 (337s)
+  [cat] BTC seed63 iter=80 (457s)
+  [cat] BTC seed70 iter=62 (570s)
+  [cat] BTC meta_val P saved (573s)
+  [cat] BTC test P saved (575s)
+  [BTC] cat 完成 575s

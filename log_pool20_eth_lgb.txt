@@ -1,0 +1,10 @@
+  [ETH] lgb 训练开始
+  [extra] 耗时 3.4s
+  [lgb] ETH seed42 iter=1 (75s)
+  [lgb] ETH seed49 iter=6 (146s)
+  [lgb] ETH seed56 iter=31 (222s)
+  [lgb] ETH seed63 iter=35 (299s)
+  [lgb] ETH seed70 iter=3 (370s)
+  [lgb] ETH meta_val P saved (373s)
+  [lgb] ETH test P saved (375s)
+  [ETH] lgb 完成 375s

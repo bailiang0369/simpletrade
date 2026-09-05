@@ -1,0 +1,10 @@
+  [BTC] xgb 训练开始
+  [extra] 耗时 3.3s
+  [xgb] BTC seed42 iter=277 (104s)
+  [xgb] BTC seed49 iter=437 (228s)
+  [xgb] BTC seed56 iter=209 (316s)
+  [xgb] BTC seed63 iter=554 (459s)
+  [xgb] BTC seed70 iter=22 (517s)
+  [xgb] BTC meta_val P saved (528s)
+  [xgb] BTC test P saved (537s)
+  [BTC] xgb 完成 537s

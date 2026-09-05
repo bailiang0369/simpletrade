@@ -1,0 +1,19 @@
+
+======================================================================
+  ETH 跨族池 (LGBM5+XGB5+CAT5)
+======================================================================
+  [extra] 耗时 3.6s
+  [lgb] seed42 iter=1
+  [lgb] seed49 iter=6
+  [lgb] seed56 iter=31
+  [lgb] seed63 iter=35
+  [lgb] seed70 iter=3
+  [xgb] seed42 iter=249
+  [xgb] seed49 iter=193
+  [xgb] seed56 iter=69
+  [xgb] seed63 iter=115
+  [xgb] seed70 iter=35
+  [cat] seed42 iter=85
+  [cat] seed49 iter=62
+  [cat] seed56 iter=83
+  [cat] seed63 iter=65

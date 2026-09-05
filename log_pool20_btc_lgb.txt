@@ -1,0 +1,10 @@
+  [BTC] lgb 训练开始
+  [extra] 耗时 3.3s
+  [lgb] BTC seed42 iter=256 (134s)
+  [lgb] BTC seed49 iter=174 (249s)
+  [lgb] BTC seed56 iter=108 (346s)
+  [lgb] BTC seed63 iter=138 (457s)
+  [lgb] BTC seed70 iter=121 (559s)
+  [lgb] BTC meta_val P saved (571s)
+  [lgb] BTC test P saved (582s)
+  [BTC] lgb 完成 582s
