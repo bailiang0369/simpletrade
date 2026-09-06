@@ -109,40 +109,6 @@ print(f'GBDT {s} H={h} done', flush=True)
                 r = subprocess.run(cmd, cwd=os.path.dirname(os.path.abspath(__file__)))
                 print(f"[multi] GBDT {s} H={h} {'✅' if r.returncode==0 else '❌'} ({time.time()-t0:.0f}s)", flush=True)
 
-            # LSTM: 用独立子进程训练
-            lstm_mv = f"/data/user/work/{s}_lstm_h{h}_mv.npy"
-            lstm_te = f"/data/user/work/{s}_lstm_h{h}_te.npy"
-            if not os.path.exists(lstm_mv):
-                t0 = time.time()
-                cmd = [sys.executable, "-c", f"""
-import sys; sys.path.insert(0, '{os.path.dirname(os.path.abspath(__file__))}')
-import os, gc, numpy as np, torch, config
-from data_store import AssetContext
-from evaluate import evaluate_topk
-from models.seq_lstm import SeqGBDLSTM, build_sequence_feats, build_ds_matrix
-
-ctx = AssetContext('{s}')
-lm = SeqGBDLSTM(seed=42); lm.fit(ctx); gc.collect()
-F = build_sequence_feats(ctx.o, ctx.h, ctx.l, ctx.c, ctx.tb, ctx.vol)
-
-def predict_chunked(model, F, pos, look_back, BLK=20000):
-    n = len(pos); out = np.zeros(n, dtype=np.float32)
-    model.eval()
-    with torch.no_grad():
-        for b0 in range(0, n, BLK):
-            b1 = min(b0 + BLK, n)
-            Xb = build_ds_matrix(F, pos[b0:b1], look_back)
-            out[b0:b1] = torch.sigmoid(model(torch.from_numpy(Xb))).numpy().squeeze()
-            del Xb
-    return out
-
-p_mv = predict_chunked(lm.model, F, ctx.ds_to_raw[ctx.split_rows['meta_val']], lm.look_back)
-p_te = predict_chunked(lm.model, F, ctx.ds_to_raw[ctx.split_rows['test']], lm.look_back)
-np.save('{lstm_mv}', p_mv); np.save('{lstm_te}', p_te)
-print(f'LSTM {s} H={h} done', flush=True)
-"""]
-                r = subprocess.run(cmd, cwd=os.path.dirname(os.path.abspath(__file__)))
-                print(f"[multi] LSTM {s} H={h} {'✅' if r.returncode==0 else '❌'} ({time.time()-t0:.0f}s)", flush=True)
             gc.collect()
 
     # 恢复默认数据集
@@ -171,23 +137,15 @@ def _eval_symbol(s):
 
         gb_mv = np.load(f"{config.DS_DIR}/{s}_gbdt_h{h}_pv.npy").astype(np.float64)
         gb_te = np.load(f"{config.DS_DIR}/{s}_gbdt_h{h}_pt.npy").astype(np.float64)
-        ls_mv = np.load(f"/data/user/work/{s}_lstm_h{h}_mv.npy").astype(np.float64)
-        ls_te = np.load(f"/data/user/work/{s}_lstm_h{h}_te.npy").astype(np.float64)
 
         ctx = AssetContext(s, horizon=h)
         y_mv = ctx.y("meta_val"); retf_mv = ctx.retf("meta_val"); ts_mv = ctx.times("meta_val")
         y_te = ctx.y("test"); retf_te = ctx.retf("test"); ts_te = ctx.times("test")
 
-        best_w, best_acc = 0.0, 0.0
-        for w in np.arange(0.0, 1.01, 0.05):
-            acc = evaluate_topk(w * gb_mv + (1 - w) * ls_mv, y_mv, retf_mv, ts_mv)["accuracy"]
-            if acc > best_acc:
-                best_acc, best_w = acc, w
-
-        p_test = (best_w * gb_te + (1 - best_w) * ls_te).astype(np.float64)
-        results[h] = dict(p=p_test, y=y_te, retf=retf_te, ts=ts_te, w=best_w,
-                          gb=gb_te, ls=ls_te)
-        del ctx, gb_mv, gb_te, ls_mv, ls_te; gc.collect()
+        p_test = gb_te
+        results[h] = dict(p=p_test, y=y_te, retf=retf_te, ts=ts_te, w=1.0,
+                          gb=gb_te)
+        del ctx, gb_mv, gb_te; gc.collect()
 
     shutil.copy2(f"{config.DS_DIR}/ds_{s}_h30.parquet", f"{config.DS_DIR}/ds_{s}.parquet")
 
@@ -333,20 +291,8 @@ def stage_stacking():
         p_gbdt_mv = np.load(f"{config.DS_DIR}/{s}_gbdt_pv.npy").astype(np.float64)
         p_gbdt_te = np.load(f"{config.DS_DIR}/{s}_gbdt_pt.npy").astype(np.float64)
         
-        # FAISS 和 LSTM 按需加载 (若不存在则跳过)
+        # 仅使用 GBDT (faiss/lstm 已被删除)
         meta_models = [('gbdt', p_gbdt_mv, p_gbdt_te)]
-        
-        faiss_pv = f"{config.DS_DIR}/{s}_faiss_pv.npy"
-        if os.path.exists(faiss_pv):
-            meta_models.append(('faiss', 
-                np.load(faiss_pv).astype(np.float64),
-                np.load(f"{config.DS_DIR}/{s}_faiss_pt.npy").astype(np.float64)))
-        
-        lstm_mv = f"/data/user/work/{s}_lstm_h30_mv.npy"
-        if os.path.exists(lstm_mv):
-            meta_models.append(('lstm',
-                np.load(lstm_mv).astype(np.float64),
-                np.load(f"/data/user/work/{s}_lstm_h30_te.npy").astype(np.float64)))
         
         # 构建元特征矩阵
         X_mv = np.column_stack([m[1] for m in meta_models])
