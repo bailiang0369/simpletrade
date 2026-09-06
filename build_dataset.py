@@ -10,6 +10,7 @@ import os
 import time
 
 import numpy as np
+import pandas as pd
 import polars as pl
 
 import config
@@ -19,6 +20,69 @@ CHUNK_ROWS = 500_000   # 每个特征计算块的原始行数(第6轮特征增�
 WARMUP = 400             # 保证滚动窗口在块首有足够历史
 FEAT_DTYPES = {}         # {col: polars dtype} 由 probe 确定
 SOFT_LABEL_SCALE = 0.005  # 软标签温度参数: sigmoid(ret/scale), 0.5%=~0.73 1%=~0.88
+
+# ---- 跨资产特征 (源币 -> 目标币) ----
+# 经验证(experiment_cross_asset.py / experiment_cross_extend.py / experiment_cross_lr17.py, R2无泄漏):
+#   12列基线 ETH+BTC +0.0109, BTC+ETH +0.0277, 两币同向为正=真实正交信号(beta传导)。
+#   增强: 更长回看(lr_480/960, z_240/480, rvol_240) 17列, ETH +0.0365(0.6093→0.6457, 坏月3→1),
+#   BTC +0.0047(0.6372→0.6419), 两币同向为正, 纳入管线。
+#   比值价差 spread_z(19列) 被证伪: 两币方向不一致(ETH +0.010 / BTC -0.018), 按 funding 教训不纳入。
+# 特征全部只用源币 t 及以前信息, 按目标币每个 raw 行 ts 对齐到源币最近 <= t 的行, 无未来泄漏。
+CROSS_LR_WINDOWS = (5, 15, 30, 60, 120, 240, 480, 960)
+CROSS_Z_WINDOWS = (30, 60, 120, 240, 480)
+CROSS_RVOL_WINDOWS = (60, 240)
+CROSS_CVD_WINDOWS = (30, 60)
+
+
+def build_cross_features(symbol, ts_sec):
+    """为目标币 symbol 构建源币因果特征, 对齐到每个目标币 raw 行 -> (n, F), 列名带源币前缀。"""
+    import pyarrow.parquet as pq
+    other = "BTC" if symbol == "ETH" else "ETH"
+    t = pq.read_table(f"{config.DS_DIR}/raw_{other}.parquet",
+                      columns=["ts", "close", "buy_vol", "sell_vol"])
+    ots = t["ts"].to_numpy().astype(np.int64)
+    oc = t["close"].to_numpy().astype(np.float64)
+    ob = t["buy_vol"].to_numpy().astype(np.float64)
+    os_ = t["sell_vol"].to_numpy().astype(np.float64)
+    del t
+    gc = __import__("gc")
+    n_o = len(oc)
+    lc = np.log(np.maximum(oc, 1e-12))
+    cols, names = [], []
+
+    def add(nm, arr):
+        cols.append(arr.astype(np.float32))
+        names.append(f"{other}_{nm}")
+
+    for k in CROSS_LR_WINDOWS:
+        r = np.full(n_o, np.nan)
+        r[k:] = lc[k:] - lc[:-k]
+        add(f"lr_{k}", r)
+    s = pd.Series(lc)
+    for w in CROSS_Z_WINDOWS:
+        mu = s.rolling(w).mean().to_numpy()
+        sd = s.rolling(w).std().to_numpy()
+        add(f"z_{w}", np.where(sd > 1e-9, (lc - mu) / sd, 0.0))
+    lr1 = np.full(n_o, np.nan)
+    lr1[1:] = lc[1:] - lc[:-1]
+    for w in CROSS_RVOL_WINDOWS:
+        add(f"rvol_{w}", pd.Series(lr1).rolling(w).std().to_numpy() * 100)
+    d = pd.Series(ob - os_)
+    tt = pd.Series(ob + os_)
+    for w in CROSS_CVD_WINDOWS:
+        add(f"cvd_{w}", (d.rolling(w).sum() / (tt.rolling(w).sum() + 1e-12)).to_numpy())
+    del s, d, tt, lc, lr1, oc, ob, os_
+    gc.collect()
+
+    F = np.stack(cols, axis=1).astype(np.float32)            # (n_o, F)
+    del cols
+    gc.collect()
+    idx = np.searchsorted(ots, ts_sec, side="right") - 1      # 源币最近 <= t 的行
+    idx = np.clip(idx, 0, n_o - 1)
+    out = F[idx]                                              # (n, F)
+    del F, idx, ots
+    gc.collect()
+    return out, names
 
 
 def build_symbol_dataset(symbol, horizon=None, overwrite=False):
@@ -61,6 +125,10 @@ def build_symbol_dataset(symbol, horizon=None, overwrite=False):
             ret_clipped = np.clip(ret / SOFT_LABEL_SCALE, -10, 10)
             soft_label[:-horizon] = (1.0 / (1.0 + np.exp(-ret_clipped))).astype(np.float32)
 
+    # ---- 跨资产特征 (源币 -> 目标币, 按目标币每个 raw 行 ts 对齐, 无泄漏) ----
+    X_cross, cross_names = build_cross_features(symbol, ts_sec)   # (n, 12)
+    print(f"[dataset] {symbol}: 跨资产特征 {len(cross_names)} 列: {cross_names}", flush=True)
+
     # ---- 探测特征列数(用 numpy 重建一个 probe 表) ----
     probe = pl.from_dict({
         "ts": ts_sec[:300], "open": close[:300], "high": close[:300],
@@ -69,8 +137,8 @@ def build_symbol_dataset(symbol, horizon=None, overwrite=False):
         "funding": np.ones(300, np.float32) * 0.0001,
     })
     probe = build_features(probe)
-    feat_names = probe.columns
-    nfeat = probe.width
+    feat_names = list(probe.columns) + cross_names
+    nfeat = len(feat_names)
     del probe
     gc.collect()
     # ---- 流式写输出: 每块算完特征即挑选有效行并追加, 峰值内存=单块 ----
@@ -104,7 +172,9 @@ def build_symbol_dataset(symbol, horizon=None, overwrite=False):
         })
         F = build_features(sub_df).to_numpy()
         del sub_df
-        F = F[off:off + keep_n]                       # (keep_n, nfeat)
+        F = F[off:off + keep_n]                       # (keep_n, nfeat_base)
+        # 拼入跨资产特征 (按 raw 行号对齐, 已是 float32; NaN 由 row_valid 统一剔除)
+        F = np.concatenate([F, X_cross[start:start + keep_n]], axis=1)
         row_valid = (np.isfinite(F).all(axis=1)
                      & np.isfinite(ret_future[start:start + keep_n])
                      & (ret_future[start:start + keep_n] != 0.0))
@@ -128,6 +198,8 @@ def build_symbol_dataset(symbol, horizon=None, overwrite=False):
         gc.collect()
         print(f"[dataset] {symbol} chunk {start // CHUNK_ROWS + 1}: "
               f"{keep_n} rows, cum_valid={writer_vn}", flush=True)
+    del X_cross
+    gc.collect()
     if writer is not None:
         writer.close()
     vn_now = writer_vn

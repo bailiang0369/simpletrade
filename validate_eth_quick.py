@@ -33,6 +33,16 @@ FEATURES = [
     "dn_run_len", "dn_run_max_240", "dn_net_240", "dn_accel_240",
     "low_break_cnt_120", "bounce_fail_240", "regime_dn_bear", "dn_rvol_ratio",
 ]
+# 跨资产特征 (由 build_dataset.build_cross_features 生成, 与目标币符号无关的固定前缀两套)
+# 经验证(experiment_cross_asset.py / experiment_cross_lr17.py, R2无泄漏): 双向同向为正
+# (ETH+BTC +0.011, BTC+ETH +0.028, 更长回看17列 ETH再+0.037 / BTC再+0.005),
+# 是真实正交信号。spread_z 已被证伪剔除(两币方向不一致)。
+# 列名按目标币不同为 BTC_* / ETH_*, 故按目标币符号切换。
+CROSS_FEATURES = [
+    "lr_5", "lr_15", "lr_30", "lr_60", "lr_120", "lr_240", "lr_480", "lr_960",
+    "z_30", "z_60", "z_120", "z_240", "z_480",
+    "rvol_60", "rvol_240", "cvd_30", "cvd_60",
+]
 EXTRA_FEATURE_NAMES = [
     "hour_sin_rvol_60", "session_minutes", "hour_sin_hour_cos",
 ]
@@ -88,7 +98,10 @@ def get_extra_for_mask(extra_raw, ctx, mask):
 def get_X(ctx, extra_raw, mask):
     X_base = ctx.X_subset(FEATURES, mask)
     X_extra = get_extra_for_mask(extra_raw, ctx, mask)
-    return np.column_stack([X_base, X_extra])
+    # 跨资产特征: 前缀取决于目标币 (BTC_* 用于 ETH, ETH_* 用于 BTC)
+    prefix = "BTC_" if ctx.symbol == "ETH" else "ETH_"
+    X_cross = ctx.X_subset([prefix + f for f in CROSS_FEATURES], mask)
+    return np.column_stack([X_base, X_extra, X_cross])
 
 
 def train_enhanced_save_models(ctx, extra_raw, model_dir):
