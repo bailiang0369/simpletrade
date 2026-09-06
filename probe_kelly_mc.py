@@ -31,14 +31,24 @@ def load_pmean(symbol, split):
     return R.mean(axis=0)
 
 
+def greedy_sparse(ts, gap=1800):
+    """每30min最多1单: 贪心保留间距>=gap 的信号(滚动窗口首尾相接=独立事件)。"""
+    keep = np.zeros(len(ts), bool)
+    last = -10**18
+    for i, t in enumerate(ts):
+        if t >= last + gap:
+            keep[i] = True
+            last = t
+    return keep
+
+
 def n_signals(symbol):
     ctx = AssetContext(symbol, horizon=30)
     pmv = load_pmean(symbol, "meta_val"); pt = load_pmean(symbol, "test")
     ts_test = ctx.ds_ts[ctx.split_rows["test"]].astype(np.int64)
     seed_conf = list(np.abs(pmv - 0.5) * 2)[-ESM.WIN_DAYS * 1440:]
     r = ESM.r2_eval(np.abs(pt - 0.5) * 2, (pt >= 0.5).astype(np.int8), ts_test, seed_conf)
-    ts = ts_test[r["sel"]]
-    return len(np.unique(ts // 1800))
+    return int(greedy_sparse(ts_test[r["sel"]]).sum())
 
 
 def mc(n, p, f):
@@ -64,8 +74,10 @@ def main():
         seed_conf = list(np.abs(pmv - 0.5) * 2)[-ESM.WIN_DAYS * 1440:]
         r = ESM.r2_eval(np.abs(pt - 0.5) * 2, (pt >= 0.5).astype(np.int8), ts_test, seed_conf)
         sel = r["sel"]; ysel = ctx.y("test")[sel]; pred = r["pred"]; ts = ts_test[sel]
-        _, first = np.unique(ts // 1800, return_index=True)
-        p_real = float((pred[first] == ysel[first]).mean())
+        # 修正: 滚动30min窗口(相邻信号重叠29min), 仅间隔>=30min为独立事件(与 sim 口径一致),
+        # 不再用固定桶 ts//1800(那会把07:30~07:59误当同一事件)
+        keep = greedy_sparse(ts)
+        p_real = float((pred[keep] == ysel[keep]).mean())
         for tag, p in (("实测", p_real), ("悲观-4pp", p_real - 0.04)):
             print(f"  --- 胜率 {tag} = {p:.4f} (盈亏平衡 0.5405) ---", flush=True)
             print("   f    | 期末中位 | MDD中位 | MDD p90 | 期末<50% | 期末<10%", flush=True)

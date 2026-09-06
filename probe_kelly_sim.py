@@ -3,7 +3,8 @@
 不同下注比例(占当前权益)的 期末权益/最大回撤/收益回撤比。
 
 - 胜率/信号序列: 生产 JOINT 模型 R2 协议选出的 top1% 真实 pred vs label
-- 信号重叠: 1分钟级信号 vs 30min窗口(ts//1800) 去重(每窗口最多1注), 贴近产品实际
+- 信号重叠: 1分钟级滚动30min窗口, 相邻信号重叠29min; 按间隔>=30min贪心稀疏化
+  (greedy_sparse, 每30min最多1注=首尾相接的独立事件), 不按固定周期桶去重
 - 每注下注额 = f * 当前权益(复利); 赢 +0.85*bet, 输 -bet
 用法: python probe_kelly_sim.py
 """
@@ -39,6 +40,17 @@ def sim(w, f):
     return eq, mdd
 
 
+def greedy_sparse(ts, win, gap=1800):
+    """按时间顺序贪心: 每次开单后跳过 gap(30min), 保留信号间距>=gap -> 窗口首尾相接, 近似独立事件。"""
+    keep = np.zeros(len(ts), bool)
+    last = -10**18
+    for i, t in enumerate(ts):
+        if t >= last + gap:
+            keep[i] = True
+            last = t
+    return win[keep]
+
+
 def main():
     for s in ("ETH", "BTC"):
         ctx = AssetContext(s, horizon=30)
@@ -49,14 +61,12 @@ def main():
         r = ESM.r2_eval(conf, (pt >= 0.5).astype(np.int8), ts_test, seed_conf)
         sel = r["sel"]; ysel = ctx.y("test")[sel]; pred = r["pred"]; ts = ts_test[sel]
         win = (pred == ysel).astype(int)
-        wd = ts // 1800                                    # 30min 窗口
-        _, first = np.unique(wd, return_index=True)
-        w = win[first]
+        w = greedy_sparse(ts, win, 1800)                 # 每30min最多1单(币安约束), 独立事件
         p = w.mean()
-        f_kelly = (BAY * p - (1 - p)) / BAY                # full Kelly
-        print(f"\n######## {s} test 模拟 ########", flush=True)
-        print(f"  信号: 总 {len(win)} 笔, 30min窗口去重 {len(w)} 笔, 去重后胜率 {p:.4f}", flush=True)
-        print(f"  盈亏平衡胜率 = 1/{1+BAY:.2f} = {1/(1+BAY):.4f}   单注期望 = {BAY*p-(1-p):+.4f} (每1U)", flush=True)
+        f_kelly = (BAY * p - (1 - p)) / BAY
+        print(f"\n######## {s} test 模拟(修正: 滚动30min窗口, 每30min限1单) ########", flush=True)
+        print(f"  信号: 总 {len(win)} 笔(1min级,相邻重叠29min), 30min间隔稀疏化后 {len(w)} 笔独立事件, 胜率 {p:.4f}", flush=True)
+        print(f"  盈亏平衡胜率 = {1/(1+BAY):.4f}   单注期望 = {BAY*p-(1-p):+.4f} (每1U)", flush=True)
         print(f"  full Kelly f* = {f_kelly:.1%}   half Kelly = {f_kelly/2:.1%}", flush=True)
         print("  下注比例f | 期末权益 | 最大回撤 | 收益/回撤 | 期末/期初", flush=True)
         for f in FRACS + (f_kelly, f_kelly / 2):
