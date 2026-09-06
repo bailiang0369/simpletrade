@@ -16,23 +16,25 @@ import config
 from data_store import AssetContext
 from evaluate import evaluate_topk, stability_report
 
-# 特征 (与 experiment_enhanced.py 一致, 不含交叉特征)
+# 特征 (精简版: 依据 JOINT LGB gain 重要性保留 top33, 移除零/低贡献特征)
+# 38 个由 features.py 生成 (30 白名单 + 8 regime), 3 个 extra 运行时拼接
 FEATURES = [
-    "lr_5", "lr_15", "lr_30", "lr_120", "lr_240", "mom_60",
-    "z_10", "z_30", "z_60", "z_120",
-    "rvol_30", "rvol_60", "rvol_ratio_60_5", "rvol_z_60", "rvol_dir",
-    "pos_30", "pos_60", "pos_120", "pos_240",
+    "lr_15", "lr_120", "lr_240", "mom_60",
+    "rvol_30", "rvol_60", "rvol_z_60", "rvol_dir",
+    "z_30", "z_60", "z_120",
+    "pos_30", "pos_120", "pos_240",
     "dd_240", "ru_240",
-    "hh_dd_60", "ll_ru_60", "body_pos_60",
-    "body_ratio", "up_wick", "lo_wick", "ngreen_10", "gap", "max_range_30",
-    "tbr_z_30", "cvd_30", "cvd_60",
-    "buyvol_strength_30", "tb_act_60", "ts_act_60", "tb_acc_30",
-    "cvd_dir_30", "tbr_hi_60", "lr_skew_60", "up_body_ratio_30", "mom_align_30_240",
-    "hour_sin", "hour_cos", "dow_sin", "dow_cos", "is_us", "is_eu", "ret_day",
+    "hh_dd_60", "ll_ru_60",
+    "lr_skew_60", "max_range_30",
+    "tb_act_60", "ts_act_60", "cvd_30", "cvd_60",
+    "mom_align_30_240",
+    "hour_sin", "hour_cos", "dow_sin", "dow_cos", "ret_day",
+    # regime 特征 (阴跌坏月防护)
+    "dn_run_len", "dn_run_max_240", "dn_net_240", "dn_accel_240",
+    "low_break_cnt_120", "bounce_fail_240", "regime_dn_bear", "dn_rvol_ratio",
 ]
 EXTRA_FEATURE_NAMES = [
-    "hour_sin_is_us", "hour_cos_is_eu", "hour_sin_rvol_60",
-    "consec_up", "consec_dn", "session_minutes", "hour_sin_hour_cos",
+    "hour_sin_rvol_60", "session_minutes", "hour_sin_hour_cos",
 ]
 BAGGED_SEEDS = [42, 49, 56, 63, 70]
 
@@ -62,12 +64,6 @@ def compute_extra_raw(ctx):
     hour = (raw_ts % 86400) // 3600; minute_of_day = (raw_ts % 86400) // 60
     hour_sin = np.sin(hour * 2 * np.pi / 24).astype(np.float32)
     hour_cos = np.cos(hour * 2 * np.pi / 24).astype(np.float32)
-    is_us = ((hour >= 13) & (hour < 21)).astype(np.float32)
-    is_eu = ((hour >= 8) & (hour < 13)).astype(np.float32)
-    consec_up = np.zeros(n, dtype=np.int32); consec_dn = np.zeros(n, dtype=np.int32)
-    for i in range(1, n):
-        if close[i] > close[i - 1]: consec_up[i] = consec_up[i - 1] + 1
-        else: consec_dn[i] = consec_dn[i - 1] + 1
     session_minutes = np.zeros(n, dtype=np.float32)
     for i in range(n):
         h = hour[i]; m = minute_of_day[i]
@@ -76,11 +72,7 @@ def compute_extra_raw(ctx):
         elif h < 21: session_minutes[i] = m - 13 * 60
         else: session_minutes[i] = m - 21 * 60
     extra = {
-        "hour_sin_is_us": (hour_sin * is_us).astype(np.float32),
-        "hour_cos_is_eu": (hour_cos * is_eu).astype(np.float32),
         "hour_sin_rvol_60": (hour_sin * rvol_60).astype(np.float32),
-        "consec_up": np.clip(consec_up.astype(np.float32) / 50.0, 0, 1),
-        "consec_dn": np.clip(consec_dn.astype(np.float32) / 50.0, 0, 1),
         "session_minutes": (session_minutes / 480.0).astype(np.float32),
         "hour_sin_hour_cos": (hour_sin * hour_cos).astype(np.float32),
     }
