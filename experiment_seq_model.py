@@ -16,6 +16,7 @@
 """
 import os, sys, gc, argparse, time
 import numpy as np
+import pandas as pd
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -32,19 +33,48 @@ SAMP = 1440
 WINDOW = 60          # 前瞻窗口(1min 根)：读近 60 根
 HIDDEN = 32
 LAYERS = 1
-CHANNELS = 6         # raw_channels 通道数: lr, body, uw, lw, tbr, cvd
+# 通道数 = raw_features 通道数: 多尺度收益6 + z-score4 + 波动率2 + 量比1 + 基础形态6 = 19
 BATCH = 512
 EPOCHS = 30
 LR = 1e-3
 PATIENCE = 6
-TRAIN_CAP = 400_000      # train 拟合子样本(控 CPU 时间)
-ES_CAP = 80_000
+TRAIN_CAP = 240_000      # train 拟合子样本(控 CPU 与内存: 240k*60*19*4B≈1.1GB)
+ES_CAP = 60_000
 SEED = 42
 
 
-# ---------- 序列特征: 项目一致的单K通道 + 窗口内z-score(因果) ----------
+# ---------- 序列特征: 与 GBDT 信息量相当的"丰富多尺度"因果通道 ----------
+def _shift(a, k):
+    out = np.empty_like(a, dtype=np.float64)
+    out[:k] = a[0]
+    out[k:] = a[:-k]
+    return out
+
+
 def raw_features(ctx):
-    return ctx.raw_channels()          # (N_raw, C) 因果单K特征
+    """(N_raw, K) 因果逐通道特征: 多尺度收益 + 价格z-score + 波动率 + 量比 + 基础形态。
+    K 与 GBDT 的信息量相当, 给序列模型公平的输入。全为 rolling 回溯(无未来)。"""
+    o, h, l, c = ctx.o, ctx.h, ctx.l, ctx.c
+    tb, tv = ctx.tb, ctx.vol
+    lc = np.log(np.maximum(c, 1e-12))
+    cols = {}
+    for k in (1, 5, 15, 30, 60, 120):
+        cols[f"r{k}"] = lc - _shift(lc, k)
+    s = pd.Series(lc)
+    for w in (15, 30, 60, 120):
+        mu = s.rolling(w).mean().to_numpy()
+        sd = s.rolling(w).std().to_numpy()
+        cols[f"z{w}"] = np.where(sd > 1e-9, (lc - mu) / np.where(sd > 1e-9, sd, 1.0), 0.0)
+    r1 = cols["r1"]
+    for w in (15, 60):
+        cols[f"vol{w}"] = pd.Series(r1).rolling(w).std().to_numpy()
+    tot = (tb.astype(np.float64) + tv.astype(np.float64))
+    vma = pd.Series(tot).rolling(60).mean().to_numpy()
+    cols["volrel"] = np.where(vma > 1e-9, tot / np.where(vma > 1e-9, vma, 1.0) - 1.0, 0.0)
+    base = ctx.raw_channels()                 # lr, body, uw, lw, tbr, cvd
+    X = np.concatenate([np.stack(list(cols.values()), 1).astype(np.float32), base], axis=1)
+    X[np.isnan(X)] = 0.0
+    return X.astype(np.float32)
 
 
 def build_sequences(X, pos, L):
@@ -58,10 +88,11 @@ def build_sequences(X, pos, L):
             base = np.lib.stride_tricks.as_strided(
                 X[:, i], shape=(len(X) - L + 1, L), strides=(X.strides[0], X.strides[0]))
             out[:, :, i] = base[st]
-        # 窗口内 z-score
+        # 窗口内 z-score(原地减均值/除方差, 避免生成超大临时数组触发OOM)
         mu = out.mean(axis=1, keepdims=True)
         sd = out.std(axis=1, keepdims=True) + 1e-6
-        out = (out - mu) / sd
+        out -= mu
+        out /= sd
         return out
     # 少见的不足窗口情形(逐位置, 保底正确性)
     idx = np.where(st >= 0)[0]
@@ -70,7 +101,8 @@ def build_sequences(X, pos, L):
             out[j, :, i] = X[st[j]:st[j] + L, i]
     mu = out.mean(axis=1, keepdims=True)
     sd = out.std(axis=1, keepdims=True) + 1e-6
-    out = (out - mu) / sd
+    out -= mu
+    out /= sd
     return out
 
 
@@ -106,7 +138,8 @@ class SeqNet(nn.Module):
 
 def train_model(Xtr, ytr, Xes, yes, device):
     torch.manual_seed(SEED)
-    model = SeqNet(CHANNELS, HIDDEN).to(device)
+    C = Xtr.shape[2]
+    model = SeqNet(C, HIDDEN).to(device)
     opt = torch.optim.Adam(model.parameters(), lr=LR)
     lossf = nn.BCEWithLogitsLoss()
     xt = torch.from_numpy(Xtr).to(device); yt = torch.from_numpy(ytr).float().to(device)
@@ -152,6 +185,21 @@ def predict(model, X, device, BLK=8192):
         for b0 in range(0, len(X), BLK):
             logit = model(xt[b0:b0 + BLK].to(device))
             out[b0:b0 + BLK] = torch.sigmoid(logit.cpu()).numpy()
+    return out
+
+
+def chunk_predict(model, Xfeat, positions, L, device, CHK=40_000):
+    """分块构建序列并推理, 避免一次性生成 (N, L, C) 超大数组触发OOM。"""
+    model.eval()
+    m = len(positions)
+    out = np.zeros(m, np.float32)
+    for s0 in range(0, m, CHK):
+        pos = positions[s0:s0 + CHK]
+        seq = build_sequences(Xfeat, pos, L)
+        with torch.no_grad():
+            logit = model(torch.from_numpy(seq).to(device))
+        out[s0:s0 + CHK] = torch.sigmoid(logit.cpu()).numpy()
+        del seq
     return out
 
 
@@ -230,18 +278,19 @@ def run_symbol(symbol):
     yes_es = ctx.y("early_stop")[ok_es][es_sub]
 
     Xtr = build_sequences(X, subtr_pos, WINDOW)
-    print(f"  训练序列 {Xtr.shape[0]}x{WINDOW}x{CHANNELS}, 构建耗时{(time.time()-t0):.0f}s, 开始训练", flush=True)
+    print(f"  训练序列 {Xtr.shape[0]}x{WINDOW}x{Xtr.shape[2]}, 构建耗时{(time.time()-t0):.0f}s, 开始训练", flush=True)
     model = train_model(Xtr, yes.astype(np.float32), Xes, yes_es.astype(np.float32), device)
-    del Xtr, Xes, X
+    del Xtr, Xes
     gc.collect()
     print(f"  TCN(序列模型) 训练完成 耗时{(time.time()-t0):.0f}s", flush=True)
 
-    # predict mv / test
+    # predict mv / test (分块, 复用已建好的特征矩阵 X, 防止OOM)
     m_idx = ctx.split_rows["meta_val"]; t_idx = ctx.split_rows["test"]
-    Xmv = build_sequences(raw_features(ctx), ctx.ds_to_raw[m_idx], WINDOW)
-    Xte = build_sequences(raw_features(ctx), ctx.ds_to_raw[t_idx], WINDOW)
-    pmv = predict(model, Xmv, device); pte = predict(model, Xte, device)
-    del Xmv, Xte, model; gc.collect()
+    mp = ctx.ds_to_raw[m_idx]; tp = ctx.ds_to_raw[t_idx]
+    pmv = chunk_predict(model, X, mp, WINDOW, device)
+    pte = chunk_predict(model, X, tp, WINDOW, device)
+    del X, model
+    gc.collect()
 
     sec_mv = ctx.ds_ts[m_idx].astype(np.int64); sec_te = ctx.ds_ts[t_idx].astype(np.int64)
     y_mv = ctx.y("meta_val"); y_te = ctx.y("test")
