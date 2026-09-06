@@ -32,9 +32,6 @@ FEATURES = [
     # regime 特征 (阴跌坏月防护)
     "dn_run_len", "dn_run_max_240", "dn_net_240", "dn_accel_240",
     "low_break_cnt_120", "bounce_fail_240", "regime_dn_bear", "dn_rvol_ratio",
-    # 多周期/高周期K形态 (实时聚合高周期K)
-    "ht15_body", "ht15_range", "ht15_prog", "ht5_body",
-    "ht15_break", "ht60_break", "ht_align_1_30", "ht15_in_ht30", "ht5_share_30",
 ]
 EXTRA_FEATURE_NAMES = [
     "hour_sin_rvol_60", "session_minutes", "hour_sin_hour_cos",

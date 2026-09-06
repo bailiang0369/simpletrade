@@ -31,6 +31,8 @@ def load_fused(symbol, tag, split):
     for f in FAMS:
         path = f"{config.DS_DIR}/JOINT_{symbol}_{f}_{split}_P.npy" if tag == "JOINT" \
             else f"{config.DS_DIR}/{symbol}_{f}_{split}_P.npy"
+        if not os.path.exists(path):
+            return None
         Ps.append(np.load(path))
     P = np.concatenate(Ps, axis=0)
     return rank_mean(P, P.shape[1])
@@ -72,6 +74,12 @@ def main():
         ok = True
         for split in ("meta_val", "test"):
             p = load_fused(symbol, tag, split)
+            if p is None:
+                print(f"===== {label} {symbol}: 预测P缺失, 跳过(旧模型产物被清) =====")
+                ok = False
+                del p
+                gc.collect()
+                break
             y = ctx.y(split)
             if len(p) != len(y):
                 print(f"===== {label} {symbol}: 预测P({len(p)})与标签({len(y)})长度失配, 跳过(旧模型或旧ds产物) =====")

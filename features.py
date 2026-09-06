@@ -114,39 +114,6 @@ def build_features(df: pl.DataFrame) -> pl.DataFrame:
     # 阴跌中波动扩张比: 阴跌时 rvol_60 相对 rvol_30 放大 (恐慌加剧)
     e["dn_rvol_ratio"] = ((lr_240 < 0) * (e["rvol_60"] / (e["rvol_30"] + EPS))).clip(0, 3)
 
-    # ================================================================
-    # 多周期 / 高周期K形态 (针对"任意时刻实时聚合高周期K")
-    # 在时刻 t, 用 1 分钟数据实时聚合成"截至 t 的最后一根高周期K"
-    # (未完成K, 收盘价=C[t]), 提取其K线形态与多周期共振。
-    # 全部 rolling 递推、从当前价 C[t] 出发, 无简单 resample 的
-    # "前一根完整K" 滞后, 无未来泄漏。
-    # ================================================================
-    # -- 未完成 15 分K: 当前 15 分钟块首开盘 O0, 实体/振幅/进度 --
-    O0_15 = O.first().over(DT.dt.truncate("15m"))      # 块内首根开盘
-    H15 = H.rolling_max(15); L15 = L.rolling_min(15)
-    e["ht15_body"] = ((C - O0_15) / (H15 - L15 + EPS)).clip(-1.5, 1.5)
-    e["ht15_range"] = ((H15 - L15) / (L15 + EPS)) * 1e4  # bps
-    e["ht15_prog"] = (DT.dt.minute().mod(15) + 1) / 15.0  # 当前15分K进度
-    # -- 未完成 5 分K --
-    O0_5 = O.first().over(DT.dt.truncate("5m"))
-    H5 = H.rolling_max(5); L5 = L.rolling_min(5)
-    e["ht5_body"] = ((C - O0_5) / (H5 - L5 + EPS)).clip(-1.5, 1.5)
-    # -- 高周期突破: C 是否站上/跌破前一根高周期K的区间 --
-    e["ht15_break"] = pl.when(C > H15.shift(1)).then(1.0).otherwise(
-        pl.when(C < L15.shift(1)).then(-1.0).otherwise(0.0))
-    e["ht60_break"] = pl.when(C > H.rolling_max(60).shift(1)).then(1.0).otherwise(
-        pl.when(C < L.rolling_min(60).shift(1)).then(-1.0).otherwise(0.0))
-    # -- 多周期方向共振: 1/5/15/30 分涨跌同号的比例 --
-    def _sgn(w):
-        return pl.when(C > C.shift(w)).then(1.0).otherwise(-1.0)
-    e["ht_align_1_30"] = (_sgn(1) + _sgn(5) + _sgn(15) + _sgn(30)) / 4.0
-    # -- 高周期K实体方向 vs 多周期: 15分K实体占 30分K区间 的归一位置 --
-    H30 = H.rolling_max(30); L30 = L.rolling_min(30)
-    e["ht15_in_ht30"] = ((C - L30) / (H30 - L30 + EPS)).clip(0, 1)
-    # -- 近5分动量占比: 最近5分净涨跌占 30分 涨跌的份额(短周期接力) --
-    lr_5 = (C / C.shift(5)).log()
-    e["ht5_share_30"] = (lr_5 / ((C / C.shift(30)).log() + EPS)).clip(-5, 5)
-
     out = df.select([expr.alias(name) for name, expr in e.items()])
     return out.cast(pl.Float32)
 
