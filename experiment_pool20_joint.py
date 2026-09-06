@@ -22,6 +22,8 @@ MAX_TRAIN = 2_600_000
 MODEL_ROOT = "/workspace/models_saved/pool20_joint"
 os.makedirs(MODEL_ROOT, exist_ok=True)
 SYMBOLS = ["ETH", "BTC"]
+# 时间衰减权重开关 (A/B): None=当前收益加权基线; 半衰期天数(如 365/730)时叠加指数衰减
+HALF_LIFE_DAYS = None
 
 
 def load_ctxs():
@@ -47,6 +49,11 @@ def joint_masks_weights(ctxs, seed):
         keep_local = np.where(mask[tr_idx_all])[0]
         raw_w = np.abs(ctx.retf("train")[keep_local]).astype(np.float64)
         w = np.clip(raw_w * 50, 0.5, 5.0)
+        if HALF_LIFE_DAYS is not None:
+            ts = ctx.ds_ts[tr_idx_all[keep_local]].astype(np.float64)
+            tr_end = ctx.ds_ts[tr_idx_all].max()
+            days = (tr_end - ts) / 86400.0
+            w = w * (0.5 ** (days / HALF_LIFE_DAYS))
         outs[s] = (mask, w)
     return outs
 
@@ -81,7 +88,7 @@ def train_family(family):
                           feval=_topk_acc_eval,
                           callbacks=[lgb.early_stopping(200, verbose=False, min_delta=1e-5),
                                      lgb.log_evaluation(0)])
-            m.save_model(f"{MODEL_ROOT}/JOINT_{family}_seed{seed}.txt")
+            m.save_model(f"{MODEL_ROOT}/JOINT_{family}_seed{seed}{'' if HALF_LIFE_DAYS is None else '_d' + str(HALF_LIFE_DAYS)}.txt")
             bis.append(m.best_iteration)
         elif family == "xgb":
             import xgboost as xgb
@@ -93,7 +100,7 @@ def train_family(family):
                      seed=seed)
             m = xgb.train(p, dtr, num_boost_round=5000, evals=[(des, "es")],
                           early_stopping_rounds=200, verbose_eval=False)
-            m.save_model(f"{MODEL_ROOT}/JOINT_{family}_seed{seed}.json")
+            m.save_model(f"{MODEL_ROOT}/JOINT_{family}_seed{seed}{'' if HALF_LIFE_DAYS is None else '_d' + str(HALF_LIFE_DAYS)}.json")
             bis.append(m.best_iteration)
         else:
             from catboost import CatBoostClassifier, Pool
@@ -104,7 +111,7 @@ def train_family(family):
                                    verbose=False, early_stopping_rounds=200, loss_function="Logloss",
                                    allow_writing_files=False)
             m.fit(tr_pool, eval_set=eval_pool, verbose_eval=False)
-            m.save_model(f"{MODEL_ROOT}/JOINT_{family}_seed{seed}.cbm")
+            m.save_model(f"{MODEL_ROOT}/JOINT_{family}_seed{seed}{'' if HALF_LIFE_DAYS is None else '_d' + str(HALF_LIFE_DAYS)}.cbm")
             bis.append(m.best_iteration_)
         print(f"  [JOINT {family}] seed{seed} iter={bis[-1]} ({time.time()-t0:.0f}s)", flush=True)
         del Xtr, ytr, w; gc.collect()
@@ -112,6 +119,7 @@ def train_family(family):
             del dtr; gc.collect()
     del Xes, yes; gc.collect()
     # ---- 预测两资产 meta_val/test 落盘 ----
+    tag = "" if HALF_LIFE_DAYS is None else f"_decay{HALF_LIFE_DAYS}"
     for s in SYMBOLS:
         for split in ("meta_val", "test"):
             mask = ctxs[s].split_rows[split]
@@ -119,20 +127,21 @@ def train_family(family):
             P = np.zeros((5, n), dtype=np.float32)
             for i, seed in enumerate(BAGGED_SEEDS):
                 bi = bis[i]
+                mt = f"_d{HALF_LIFE_DAYS}" if HALF_LIFE_DAYS is not None else ""
                 if family == "lgb":
                     import lightgbm as lgb
-                    mm = lgb.Booster(model_file=f"{MODEL_ROOT}/JOINT_{family}_seed{seed}.txt")
+                    mm = lgb.Booster(model_file=f"{MODEL_ROOT}/JOINT_{family}_seed{seed}{mt}.txt")
                     P[i] = mm.predict(X, num_iteration=bi)
                 elif family == "xgb":
                     import xgboost as xgb
-                    mm = xgb.Booster(); mm.load_model(f"{MODEL_ROOT}/JOINT_{family}_seed{seed}.json")
+                    mm = xgb.Booster(); mm.load_model(f"{MODEL_ROOT}/JOINT_{family}_seed{seed}{mt}.json")
                     P[i] = mm.predict(xgb.DMatrix(X), iteration_range=(0, bi))
                 else:
                     from catboost import CatBoostClassifier
-                    mm = CatBoostClassifier(); mm.load_model(f"{MODEL_ROOT}/JOINT_{family}_seed{seed}.cbm")
+                    mm = CatBoostClassifier(); mm.load_model(f"{MODEL_ROOT}/JOINT_{family}_seed{seed}{mt}.cbm")
                     P[i] = mm.predict(X, prediction_type="Probability")[:, 1]
                 del mm; gc.collect()
-            np.save(f"{config.DS_DIR}/JOINT_{s}_{family}_{split}_P.npy", P)
+            np.save(f"{config.DS_DIR}/JOINT{tag}_{s}_{family}_{split}_P.npy", P)
             print(f"  [JOINT {family}] {s} {split} P saved ({time.time()-t0:.0f}s)", flush=True)
             del X, P; gc.collect()
     print(f"  [JOINT] {family} 完成 {time.time()-t0:.0f}s", flush=True)
@@ -206,10 +215,14 @@ def evaluate():
 
 
 def main():
+    global HALF_LIFE_DAYS
     ap = argparse.ArgumentParser()
     ap.add_argument("mode", choices=["train", "eval"])
     ap.add_argument("family", nargs="?", choices=["lgb", "xgb", "cat"])
+    ap.add_argument("--decay", type=int, default=None,
+                    help="时间衰减半衰期天数 (None=基线收益加权; 如 365/730)")
     args = ap.parse_args()
+    HALF_LIFE_DAYS = args.decay
     if args.mode == "train":
         train_family(args.family)
     else:
