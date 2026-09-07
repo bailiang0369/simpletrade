@@ -25,6 +25,7 @@ import time
 
 import numpy as np
 
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "data_processing"))
 import config
 from data_store import AssetContext
 from evaluate import evaluate_topk, check_all
