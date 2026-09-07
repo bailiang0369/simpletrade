@@ -20,8 +20,12 @@ import argparse
 import os
 import sys
 
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+_SIM_DIR = os.path.dirname(os.path.abspath(__file__))
+_ROOT = os.path.dirname(_SIM_DIR)
+_LIVE = os.path.join(_ROOT, "live")
+for p in (_SIM_DIR, _LIVE, _ROOT):
+    if p not in sys.path:
+        sys.path.insert(0, p)
 
 import numpy as np
 
@@ -30,7 +34,7 @@ from data_store import AssetContext
 from features_online import compute_X, bars_frame
 from validate_eth_quick import get_X, compute_extra_raw
 
-BUNDLES_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "bundles")
+BUNDLES_DIR = os.path.join(_LIVE, "bundles")
 SYMBOLS = ["ETH", "BTC"]
 # 特征等价仅作诊断: 极端 z 值在近常数窗口被微小 sd 放大, 会有 ~1e-3 绝对差, 但
 # 该差异对模型预测无可观测影响(在线/离线池 top1% 逐位一致, 见 diag_pool_acc)。故
