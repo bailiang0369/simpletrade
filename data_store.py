@@ -10,9 +10,32 @@ import gc
 from datetime import datetime, timezone
 
 import numpy as np
+import polars as pl
 import pyarrow.parquet as pq
 
 import config
+
+
+def load_raw_bars(symbol, columns=("ts", "open", "high", "low", "close", "buy_vol", "sell_vol"),
+                  last=None, since_ts=None):
+    """加载 raw_{symbol}.parquet 的原始 1min bars 为 polars DataFrame(时间升序)。
+
+    供 live/run_once / replay 在线特征使用(与离线训练同源数据)。
+    close/buy_vol/sell_vol 升为 float64(pq 源若存 float32 会损失精度), 以精确复刻离线
+    build_cross_features 的 float64 语义; last: 仅保留末尾 N 根; since_ts: 只取 ts>=since_ts。
+    """
+    raw_p = f"{config.DS_DIR}/raw_{symbol}.parquet"
+    cols = list(columns)
+    lz = pl.scan_parquet(raw_p).select(cols)
+    if since_ts is not None:
+        lz = lz.filter(pl.col("ts") >= int(since_ts))
+    if last is not None:
+        lz = lz.tail(last)
+    df = lz.collect()
+    for c in ("close", "buy_vol", "sell_vol"):
+        if c in df.columns:
+            df = df.with_columns(pl.col(c).cast(pl.Float64))
+    return df
 
 # 时间切分边界 -> epoch 秒(避免 pandas 开销)
 _SPLIT_EPOCH = {
