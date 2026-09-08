@@ -1,0 +1,112 @@
+[fetch] BTC: 3501195 rows -> /workspace/data/datasets/raw_BTC.parquet ts[1577836860..1788048000] (15s)
+[fetch] ETH: 3501194 rows -> /workspace/data/datasets/raw_ETH.parquet ts[1577836860..1788048000] (30s)
+[fetch] done
+/workspace/data_processing/build_dataset.py:67: RuntimeWarning: invalid value encountered in divide
+  add(f"z_{w}", np.where(sd > 1e-9, (lc - mu) / sd, 0.0))
+[short] ETH/h3: 跨资产 17 列
+[short] ETH/h3 chunk 1: keep=491713
+[short] ETH/h3 chunk 2: keep=990880
+[short] ETH/h3 chunk 3: keep=1489824
+[short] ETH/h3 chunk 4: keep=1983627
+[short] ETH/h3 chunk 5: keep=2481948
+[short] ETH/h3 chunk 6: keep=2980843
+[short] ETH/h3 chunk 7: keep=3478759
+[short] ETH/h3 chunk 8: keep=3479938
+[short] ETH/h3: rows=3479938, cols=59, label_ratio=0.5011, null=0
+[short] BTC/h3: 跨资产 17 列
+[short] BTC/h3 chunk 1: keep=498495
+[short] BTC/h3 chunk 2: keep=998218
+[short] BTC/h3 chunk 3: keep=1497955
+[short] BTC/h3 chunk 4: keep=1992515
+[short] BTC/h3 chunk 5: keep=2489648
+[short] BTC/h3 chunk 6: keep=2986656
+[short] BTC/h3 chunk 7: keep=3482777
+[short] BTC/h3 chunk 8: keep=3483948
+[short] BTC/h3: rows=3483948, cols=59, label_ratio=0.5004, null=0
+[short] ETH/h5: 跨资产 17 列
+[short] ETH/h5 chunk 1: keep=493517
+[short] ETH/h5 chunk 2: keep=992890
+[short] ETH/h5 chunk 3: keep=1492160
+[short] ETH/h5 chunk 4: keep=1988926
+[short] ETH/h5 chunk 5: keep=2487775
+[short] ETH/h5 chunk 6: keep=2986958
+[short] ETH/h5 chunk 7: keep=3485691
+[short] ETH/h5 chunk 8: keep=3486879
+[short] ETH/h5: rows=3486879, cols=59, label_ratio=0.5015, null=0
+[short] BTC/h5: 跨资产 17 列
+[short] BTC/h5 chunk 1: keep=498651
+[short] BTC/h5 chunk 2: keep=998430
+[short] BTC/h5 chunk 3: keep=1498275
+[short] BTC/h5 chunk 4: keep=1995840
+[short] BTC/h5 chunk 5: keep=2494543
+[short] BTC/h5 chunk 6: keep=2993291
+[short] BTC/h5 chunk 7: keep=3491563
+[short] BTC/h5 chunk 8: keep=3492747
+[short] BTC/h5: rows=3492747, cols=59, label_ratio=0.5006, null=0
+=== BUILD DONE ===
+h3 lgb done rc=137
+h5 lgb done rc=0
+h3 xgb done rc=137
+=== start serial re-train ===
+=== [1/4] h3 lgb ===
+  [extra] 耗时 1.7s
+  [extra] 耗时 1.6s
+  [h3 lgb] seed42 iter=204 (157s)
+  [h3 lgb] seed49 iter=50 (264s)
+  [h3 lgb] seed56 iter=468 (483s)
+  [h3 lgb] seed63 iter=276 (654s)
+  [h3 lgb] seed70 iter=279 (829s)
+  [h3 lgb] ETH meta_val P saved (851s)
+  [h3 lgb] ETH test P saved (872s)
+  [h3 lgb] BTC meta_val P saved (895s)
+  [h3 lgb] BTC test P saved (916s)
+  [h3] lgb 完成 916s
+rc=0 h3 lgb
+=== [2/4] h3 xgb ===
+  [extra] 耗时 1.7s
+  [extra] 耗时 1.6s
+  [h3 xgb] seed42 iter=1264 (329s)
+  [h3 xgb] seed49 iter=957 (589s)
+  [h3 xgb] seed56 iter=1165 (892s)
+  [h3 xgb] seed63 iter=1104 (1182s)
+  [h3 xgb] seed70 iter=470 (1345s)
+  [h3 xgb] ETH meta_val P saved (1376s)
+  [h3 xgb] ETH test P saved (1404s)
+  [h3 xgb] BTC meta_val P saved (1433s)
+  [h3 xgb] BTC test P saved (1460s)
+  [h3] xgb 完成 1460s
+rc=0 h3 xgb
+=== [3/4] h3 cat ===
+  [extra] 耗时 1.7s
+  [extra] 耗时 1.8s
+  [h3 cat] seed42 iter=94 (155s)
+  [h3 cat] seed49 iter=70 (294s)
+  [h3 cat] seed56 iter=111 (454s)
+  [h3 cat] seed63 iter=281 (693s)
+  [h3 cat] seed70 iter=111 (849s)
+  [h3 cat] ETH meta_val P saved (852s)
+  [h3 cat] ETH test P saved (855s)
+  [h3 cat] BTC meta_val P saved (858s)
+  [h3 cat] BTC test P saved (860s)
+  [h3] cat 完成 860s
+rc=0 h3 cat
+=== [4/4] h5 xgb + h5 cat ===
+  [h5 xgb] seed56 iter=726 (222s)
+  [h5 xgb] seed63 iter=604 (413s)
+  [h5 xgb] seed70 iter=804 (639s)
+  [h5 xgb] ETH meta_val P saved (658s)
+  [h5 xgb] ETH test P saved (676s)
+  [h5 xgb] BTC meta_val P saved (695s)
+  [h5 xgb] BTC test P saved (713s)
+  [h5] xgb 完成 713s
+rc=0 h5 xgb
+  [h5 cat] seed56 iter=74 (435s)
+  [h5 cat] seed63 iter=86 (583s)
+  [h5 cat] seed70 iter=76 (726s)
+  [h5 cat] ETH meta_val P saved (729s)
+  [h5 cat] ETH test P saved (732s)
+  [h5 cat] BTC meta_val P saved (734s)
+  [h5 cat] BTC test P saved (737s)
+  [h5] cat 完成 737s
+rc=0 h5 cat
+=== ALL DONE ===

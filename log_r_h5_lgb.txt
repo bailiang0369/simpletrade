@@ -1,0 +1,13 @@
+[h5] lgb 训练开始
+  [extra] 耗时 1.8s
+  [extra] 耗时 1.7s
+  [h5 lgb] seed42 iter=40 (120s)
+  [h5 lgb] seed49 iter=303 (295s)
+  [h5 lgb] seed56 iter=73 (409s)
+  [h5 lgb] seed63 iter=154 (543s)
+  [h5 lgb] seed70 iter=164 (685s)
+  [h5 lgb] ETH meta_val P saved (699s)
+  [h5 lgb] ETH test P saved (712s)
+  [h5 lgb] BTC meta_val P saved (726s)
+  [h5 lgb] BTC test P saved (738s)
+  [h5] lgb 完成 738s

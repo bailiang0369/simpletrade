@@ -75,6 +75,24 @@ def train_family(family, horizon):
     del Xes_list, yes_list; gc.collect()
     bis = []
     for seed in BAGGED_SEEDS:
+        # 已有模型文件则跳过训练(断点续训), 直接读取 best_iteration
+        ext = {"lgb": "txt", "xgb": "json", "cat": "cbm"}[family]
+        mp = f"{root}/JOINT_{family}_seed{seed}.{ext}"
+        if os.path.exists(mp):
+            if family == "lgb":
+                import lightgbm as lgb
+                bi = lgb.Booster(model_file=mp).best_iteration
+            elif family == "xgb":
+                import xgboost as xgb
+                mm = xgb.Booster(); mm.load_model(mp)
+                bi = int(mm.best_iteration)
+            else:
+                from catboost import CatBoostClassifier
+                mm = CatBoostClassifier(); mm.load_model(mp)
+                bi = int(mm.get_best_iteration())
+            bis.append(bi)
+            print(f"  [h{horizon} {family}] seed{seed} 跳过(已有), iter={bi}", flush=True)
+            continue
         mws = joint_masks_weights(ctxs, seed)
         Xtr_list = [get_X(ctxs[s], extras[s], mws[s][0]) for s in SYMBOLS]
         ytr_list = [ctxs[s].label[mws[s][0]].astype(np.float64) for s in SYMBOLS]

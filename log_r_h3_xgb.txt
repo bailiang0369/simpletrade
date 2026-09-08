@@ -1,0 +1,3 @@
+[h3] xgb 训练开始
+  [extra] 耗时 1.8s
+  [extra] 耗时 1.7s

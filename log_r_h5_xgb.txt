@@ -1,0 +1,5 @@
+[h5] xgb 训练开始
+  [extra] 耗时 1.7s
+  [extra] 耗时 1.6s
+  [h5 xgb] seed42 iter=472 (167s)
+  [h5 xgb] seed49 iter=553 (332s)
