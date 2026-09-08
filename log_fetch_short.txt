@@ -1,0 +1,3 @@
+[fetch] BTC: 3501195 rows -> /workspace/data/datasets/raw_BTC.parquet ts[1577836860..1788048000] (17s)
+[fetch] ETH: 3501194 rows -> /workspace/data/datasets/raw_ETH.parquet ts[1577836860..1788048000] (33s)
+[fetch] done

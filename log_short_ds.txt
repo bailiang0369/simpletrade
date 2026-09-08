@@ -1,0 +1,42 @@
+/workspace/data_processing/build_dataset.py:67: RuntimeWarning: invalid value encountered in divide
+  add(f"z_{w}", np.where(sd > 1e-9, (lc - mu) / sd, 0.0))
+[short] ETH/h3: 跨资产 17 列
+[short] ETH/h3 chunk 1: keep=491713
+[short] ETH/h3 chunk 2: keep=990880
+[short] ETH/h3 chunk 3: keep=1489824
+[short] ETH/h3 chunk 4: keep=1983627
+[short] ETH/h3 chunk 5: keep=2481948
+[short] ETH/h3 chunk 6: keep=2980843
+[short] ETH/h3 chunk 7: keep=3478759
+[short] ETH/h3 chunk 8: keep=3479938
+[short] ETH/h3: rows=3479938, cols=59, label_ratio=0.5011, null=0
+[short] BTC/h3: 跨资产 17 列
+[short] BTC/h3 chunk 1: keep=498495
+[short] BTC/h3 chunk 2: keep=998218
+[short] BTC/h3 chunk 3: keep=1497955
+[short] BTC/h3 chunk 4: keep=1992515
+[short] BTC/h3 chunk 5: keep=2489648
+[short] BTC/h3 chunk 6: keep=2986656
+[short] BTC/h3 chunk 7: keep=3482777
+[short] BTC/h3 chunk 8: keep=3483948
+[short] BTC/h3: rows=3483948, cols=59, label_ratio=0.5004, null=0
+[short] ETH/h5: 跨资产 17 列
+[short] ETH/h5 chunk 1: keep=493517
+[short] ETH/h5 chunk 2: keep=992890
+[short] ETH/h5 chunk 3: keep=1492160
+[short] ETH/h5 chunk 4: keep=1988926
+[short] ETH/h5 chunk 5: keep=2487775
+[short] ETH/h5 chunk 6: keep=2986958
+[short] ETH/h5 chunk 7: keep=3485691
+[short] ETH/h5 chunk 8: keep=3486879
+[short] ETH/h5: rows=3486879, cols=59, label_ratio=0.5015, null=0
+[short] BTC/h5: 跨资产 17 列
+[short] BTC/h5 chunk 1: keep=498651
+[short] BTC/h5 chunk 2: keep=998430
+[short] BTC/h5 chunk 3: keep=1498275
+[short] BTC/h5 chunk 4: keep=1995840
+[short] BTC/h5 chunk 5: keep=2494543
+[short] BTC/h5 chunk 6: keep=2993291
+[short] BTC/h5 chunk 7: keep=3491563
+[short] BTC/h5 chunk 8: keep=3492747
+[short] BTC/h5: rows=3492747, cols=59, label_ratio=0.5006, null=0
