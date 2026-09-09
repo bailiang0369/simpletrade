@@ -12,7 +12,7 @@
   python -m backtest_short.sim_compound_3m            # 全扫描
   python -m backtest_short.sim_compound_3m 0.08 500   # 单点: f=0.08, u0=500
 """
-import os, sys, json
+import os, sys, json, math
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import numpy as np
 import config
@@ -27,8 +27,11 @@ F_GRID = [0.003, 0.004, 0.005, 0.008, 0.01, 0.015, 0.02, 0.03]
 DD_LIMIT = -0.20  # 最大回撤目标: 20%
 
 
-def sim_compound(ts, pred, ysig, u0, f):
-    """复利模拟, 返回 (curve, stats)。"""
+def sim_compound(ts, pred, ysig, u0, f, max_stake=float("inf")):
+    """复利模拟, 返回 (curve, stats)。
+
+    max_stake: 单注上限(平台限制)。默认无穷大。
+    """
     eq = float(u0)
     curve = [eq]
     win = (pred == ysig).astype(np.int8)
@@ -38,7 +41,7 @@ def sim_compound(ts, pred, ysig, u0, f):
     for w in win:
         if eq < MIN_STAKE:
             break  # 爆仓/无法满足最小单注
-        stake = min(eq, round(max(MIN_STAKE, eq * f), 2))
+        stake = min(eq, max_stake, round(max(MIN_STAKE, eq * f), 2))
         eq = eq + stake * PAYOUT if w == 1 else eq - stake
         curve.append(eq)
         n += 1
@@ -82,20 +85,24 @@ def downsample(x, n_out=400):
 
 def main():
     single = None
+    max_stake = float("inf")
     if len(sys.argv) >= 3:
         single = (float(sys.argv[1]), float(sys.argv[2]))
+        if len(sys.argv) >= 4:
+            max_stake = float(sys.argv[3])
     ts, pred, ysig = load_all_signals()
     ts0 = ts[0]
     x_days = (ts - ts0) / 86400.0
 
     if single is not None:
         f, u0 = single
-        curve, st = sim_compound(ts, pred, ysig, u0, f)
-        print(f"# f={f:.2f} u0={u0:.0f}: 交易={st['trades']} 胜率={st['acc']:.4f} "
+        curve, st = sim_compound(ts, pred, ysig, u0, f, max_stake)
+        tag = f"f{int(f*1000)}_u{int(u0)}_cap{int(max_stake)}" if math.isfinite(max_stake) else f"f{int(f*1000)}_u{int(u0)}"
+        print(f"# f={f:.2f} u0={u0:.0f} cap={max_stake}: 交易={st['trades']} 胜率={st['acc']:.4f} "
               f"终值={st['final']:.2f}U ROI={st['roi']*100:+.1f}% "
               f"最大回撤={st['max_dd_u']:.2f}U ({st['max_dd_pct']*100:.1f}%) "
               f"最大连亏={st['max_consec_loss']} 爆仓={st['busted']}")
-        out = os.path.join(config.RESULT_DIR, f"sim_compound_f{int(f*1000)}_u{int(u0)}.json")
+        out = os.path.join(config.RESULT_DIR, f"sim_compound_{tag}.json")
         x = x_days[:len(curve)]
         json.dump({"f": f, "u0": u0, "stats": st,
                    "curve_x": downsample(x).tolist(), "curve_eq": downsample(curve).tolist()},
