@@ -22,7 +22,7 @@ def ens_p(P):
     return R.mean(axis=0)
 
 def analyze_one_horizon(H):
-    """单周期: 每日top1% vs 修正版因果阈值, 对比信号数/准确率."""
+    """单周期: 每日top1%(有前视,仅参考) vs 朴素因果阈值(前30/90天历史P99)."""
     from backtest_short.causal_signals_fixed import causal_signals_fixed
     results = {}
     all_entries = []
@@ -36,7 +36,7 @@ def analyze_one_horizon(H):
         conf = np.abs(p - 0.5) * 2
         pred = (p >= 0.5).astype(np.int8)
 
-        # 每日 top 1%
+        # 每日 top 1% (有前视, 仅作参考基线)
         days = np.unique(sec // 86400)
         sel = np.zeros(len(sec), dtype=bool)
         for d in days:
@@ -47,27 +47,30 @@ def analyze_one_horizon(H):
         top1_acc = float((pred[sel] == y[sel]).mean()) if sel.sum() else 0
         top1_count = int(sel.sum())
 
-        # 修正版因果
-        ts, pr, gt = causal_signals_fixed(sym, H)
-        causal_count = len(ts)
-        causal_acc = float((pr == gt).mean()) if len(pr) else 0
+        # 朴素因果: 前30天历史 P99
+        ts30, pr30, gt30 = causal_signals_fixed(sym, H, win_days=30)
+        # 朴素因果: 前90天历史 P99
+        ts90, pr90, gt90 = causal_signals_fixed(sym, H, win_days=90)
 
         results[sym] = {"top1_n": top1_count, "top1_acc": top1_acc,
-                       "causal_n": causal_count, "causal_acc": causal_acc,
+                       "c30_n": len(ts30), "c30_acc": float((pr30 == gt30).mean()) if len(pr30) else 0,
+                       "c90_n": len(ts90), "c90_acc": float((pr90 == gt90).mean()) if len(pr90) else 0,
                        "days": int(len(days))}
-        all_entries.append((ts, pr, gt, sym))
+        all_entries.append((ts30, pr30, gt30, sym))
 
     # 合并 ETH+BTC 的信号数和准确率
     total_top1 = sum(r["top1_n"] for r in results.values())
-    total_causal = sum(r["causal_n"] for r in results.values())
+    total_c30 = sum(r["c30_n"] for r in results.values())
+    total_c90 = sum(r["c90_n"] for r in results.values())
     days = results["ETH"]["days"]
     return {
         "horizon": H,
         "top1_total": total_top1, "top1_per_day": total_top1 / max(days, 1),
         "top1_acc": np.mean([r["top1_acc"] for r in results.values()]),
-        "causal_total": total_causal, "causal_per_day": total_causal / max(days, 1),
-        "causal_acc": np.mean([r["causal_acc"] for r in results.values()]),
-        "top1_vs_causal_ratio": total_causal / max(total_top1, 1),
+        "c30_total": total_c30, "c30_per_day": total_c30 / max(days, 1),
+        "c30_acc": np.mean([r["c30_acc"] for r in results.values()]),
+        "c90_total": total_c90, "c90_per_day": total_c90 / max(days, 1),
+        "c90_acc": np.mean([r["c90_acc"] for r in results.values()]),
         "results_by_symbol": results,
     }
 
@@ -123,19 +126,20 @@ def main():
     print("=" * 60)
 
     # Part 1: 各周期信号数 + 准确率
-    print("\n[Part 1] 各周期信号密度 + 准确率对比")
-    print(f"{'horizon':>8} | {'每日top1%':>10} | {'因果(修正)':>10} | "
-          f"{'top1%准确率':>12} | {'因果准确率':>12} | {'因果/top1%':>10}")
+    print("\n[Part 1] 信号密度 + 准确率对比")
+    print("  top1% = 当日分布取分位(有前视, 仅参考基线)")
+    print("  c30/c90 = 前30/90天历史 conf 的 P99 当阈值, 当日信号只和它比, 不强制每日1%")
+    print(f"{'horizon':>8} | {'top1%/天':>8} | {'top1%acc':>9} | {'c30/天':>7} | {'c30acc':>7} | {'c90/天':>7} | {'c90acc':>7}")
     print("-" * 75)
     for H in HORIZONS:
         r = analyze_one_horizon(H)
         summary["horizon_analysis"].append(r)
-        print(f"{H:>5}min | {r['top1_per_day']:>10.1f} | {r['causal_per_day']:>10.1f} | "
-              f"{r['top1_acc']*100:>11.2f}% | {r['causal_acc']*100:>11.2f}% | "
-              f"{r['top1_vs_causal_ratio']*100:>9.0f}%")
+        print(f"{H:>5}min | {r['top1_per_day']:>8.1f} | {r['top1_acc']*100:>8.2f}% | "
+              f"{r['c30_per_day']:>7.1f} | {r['c30_acc']*100:>6.2f}% | "
+              f"{r['c90_per_day']:>7.1f} | {r['c90_acc']*100:>6.2f}%")
 
     # Part 2: 相关性
-    print("\n[Part 2] 四周期信号相关性 (修正版因果阈值)")
+    print("\n[Part 2] 四周期信号相关性 (朴素因果 前30天 P99)")
     corr = corr_analysis()
     summary["correlation"] = corr
     Hs = HORIZONS

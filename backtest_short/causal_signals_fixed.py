@@ -1,13 +1,9 @@
 #!/usr/bin/env python3
-"""修正版因果信号: 保持每日 ≈1% 覆盖率的同时无前视偏差.
+"""朴素因果信号: 无前视偏差.
 
-原 sim_causal_3m.py 用「前 90 天全局 P99」当阈值——对长周期完全不公平
-(牛市/熊市/震荡期置信度分布大幅漂移, 全局 P99 与当日 tail 完全脱节).
-
-修正方案: 前 90 天每一天「当日 top1% 阈值」的 P99 作为当日阈值.
-- 因果性: 只用历史每日 top1% 阈值, 不用当日分布
-- 密度: 保持每天 ≈ 1% 覆盖率的信号数
-- 稳定性: 阈值是每日相对值的 P99, 不随宏观漂移失控
+用户口径: 前 WIN_DAYS 天(一个月=30天或更长时间)历史预测置信度 |p-0.5|*2 取 P99(top1%)
+当阈值; 当日信号只和这个历史阈值比较, conf>=tau 就出信号. 出多少算多少,
+不强制每天覆盖 1%. 只用历史不用当天 -> 无前视.
 
 用法: 训练完模型后
   from backtest_short.causal_signals_fixed import causal_signals_fixed
@@ -21,9 +17,9 @@ from data_store import AssetContext
 
 FAMILIES = ["lgb", "xgb", "cat"]
 SEEDS = [42, 49, 56, 63, 70]
-WIN_DAYS = 90
-COLD_MIN_DAYS = 30
-PERCENTILE = 99.0  # 前 N 天每日 top1% 阈值的 P99
+WIN_DAYS = 30        # 用户口径: 前一个月
+COLD_MIN_DAYS = 30   # 冷启动: 历史不足一个月不发信号
+PERCENTILE = 99.0    # 前 N 天历史 conf 的 P99 (top1% 分位点)
 
 
 def load_P(symbol, horizon, split):
@@ -47,11 +43,14 @@ def ens_p(P, symbol, horizon):
     return R.mean(axis=0)
 
 
-def causal_signals_fixed(symbol, horizon=3):
-    """修正版因果信号: 每日阈值 = 前 90 天每日 top1% 阈值的 P99.
-    
+def causal_signals_fixed(symbol, horizon=3, win_days=None, percentile=None):
+    """朴素因果信号: 当日阈值 = 前 win_days 天历史 conf 的 P99.
+
+    不强制每日 1% 覆盖率, 当日 conf>=tau 就出信号, 出多少算多少.
     返回 (ts, pred, y), 按时间排序, 无同分钟重复.
     """
+    win_days = win_days or WIN_DAYS
+    percentile = percentile or PERCENTILE
     ctx = AssetContext(symbol, horizon=horizon, ds_name=f"ds_{symbol}_h{horizon}")
     split = "test"
     p = ens_p(load_P(symbol, horizon, split), symbol, horizon)
@@ -60,33 +59,26 @@ def causal_signals_fixed(symbol, horizon=3):
     conf = np.abs(p - 0.5) * 2
     pred = (p >= 0.5).astype(np.int8)
     o = np.argsort(sec); sec, conf, pred, y = sec[o], conf[o], pred[o], y[o]
-    
+
     days = np.unique(sec // 86400)
     day_of = sec // 86400
-    
-    # 第一步: 计算每天的 top1% 阈值 (不用当日完整分布, 只用 conf 列表排序取 P99)
+    day_confs = {int(d): conf[day_of == d] for d in days}
     day_list = days.astype(int).tolist()
-    daily_tau = {}  # day -> 当日 top1% 置信度阈值
-    for d in day_list:
-        m = day_of == d
-        day_conf = conf[m]
-        daily_tau[d] = float(np.percentile(day_conf, 99))
-    
-    # 第二步: 逐天因果决定当日阈值
+
+    # 逐天: 阈值 = 前 win_days 天(不含当天)全部历史 conf 的 P99
     sig_ts, sig_pred, sig_y = [], [], []
     for i, d in enumerate(day_list):
-        prior = day_list[max(0, i - WIN_DAYS):i]
+        prior = day_list[max(0, i - win_days):i]
         if len(prior) < COLD_MIN_DAYS:
-            continue  # 冷启动跳过
-        # 关键改动: 阈值 = 前90天每日 top1% 阈值的 P99, 而不是全局样本的 P99
-        prior_taus = [daily_tau[d2] for d2 in prior]
-        tau = float(np.percentile(prior_taus, PERCENTILE))
+            continue  # 冷启动: 历史不足一个月不发
+        hist = np.concatenate([day_confs[d2] for d2 in prior])
+        tau = float(np.percentile(hist, percentile))
         m = day_of == d
         rc = conf[m] >= tau
         sig_ts.append(sec[m][rc])
         sig_pred.append(pred[m][rc])
         sig_y.append(y[m][rc])
-    
+
     ts = np.concatenate(sig_ts); pr = np.concatenate(sig_pred); gt = np.concatenate(sig_y)
     o2 = np.argsort(ts); ts, pr, gt = ts[o2], pr[o2], gt[o2]
     # 同分钟去重
