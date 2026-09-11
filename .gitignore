@@ -1,6 +1,6 @@
 # 数据
 data/
-*.npy
+# *.npy
 *.npz
 
 # 缓存
@@ -14,7 +14,7 @@ __pycache__/
 *.out
 
 # 生成文件
-results/
+# results/
 *.html
 
 # 保存的模型
