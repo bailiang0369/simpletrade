@@ -11,10 +11,9 @@ FAMILIES = ["lgb", "xgb", "cat"]
 SEEDS = [42, 49, 56, 63, 70]
 
 def load_P(sym, h, split):
-    return np.concatenate([
-        np.load(f"{config.DS_DIR}/SHORT_{sym}_h{h}_{f}_{split}_P.npy")
-        for f in FAMILIES
-    ], axis=0).astype(np.float64)
+    Ps = [np.load(f"{config.DS_DIR}/SHORT_{sym}_h{h}_{f}_{split}_P.npy")
+          for f in FAMILIES]
+    return np.stack(Ps, axis=0).astype(np.float64)
 
 def ens_p(P):
     R = np.zeros_like(P)

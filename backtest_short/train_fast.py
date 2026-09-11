@@ -63,8 +63,8 @@ def train_one(family, horizon):
     Xtr = np.concatenate(Xtr_list); ytr = np.concatenate(ytr_list); wtr = np.concatenate(wtr_list)
     del Xtr_list, ytr_list, wtr_list; gc.collect()
 
-    Xva_list = [get_X(ctxs[s], extras[s], ctxs[s].split_rows["val"]) for s in SYMBOLS]
-    yva_list = [ctxs[s].label[ctxs[s].split_rows["val"]].astype(np.float64) for s in SYMBOLS]
+    Xva_list = [get_X(ctxs[s], extras[s], ctxs[s].split_rows["early_stop"]) for s in SYMBOLS]
+    yva_list = [ctxs[s].label[ctxs[s].split_rows["early_stop"]].astype(np.float64) for s in SYMBOLS]
     Xva = np.concatenate(Xva_list); yva = np.concatenate(yva_list)
     del Xva_list, yva_list; gc.collect()
 
@@ -110,7 +110,11 @@ def train_one(family, horizon):
         for split in ["meta_val", "test"]:
             mask = ctx.split_rows[split]
             Xt = get_X(ctx, extras_s, mask)
-            raw = m.predict(Xt)
+            if family == "xgb":
+                import xgboost as xgb_mod
+                raw = m.predict(xgb_mod.DMatrix(Xt))
+            else:
+                raw = m.predict(Xt)
             p = 1.0 / (1.0 + np.exp(-raw))
             p_path = f"{config.DS_DIR}/SHORT_{sym}_h{horizon}_{family}_{split}_P.npy"
             np.save(p_path, p.astype(np.float32))

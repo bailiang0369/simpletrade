@@ -27,10 +27,9 @@ PERCENTILE = 99.0  # 前 N 天每日 top1% 阈值的 P99
 
 
 def load_P(symbol, horizon, split):
-    return np.concatenate([
-        np.load(f"{config.DS_DIR}/SHORT_{symbol}_h{horizon}_{f}_{split}_P.npy")
-        for f in FAMILIES
-    ], axis=0).astype(np.float64)
+    Ps = [np.load(f"{config.DS_DIR}/SHORT_{symbol}_h{horizon}_{f}_{split}_P.npy")
+          for f in FAMILIES]
+    return np.stack(Ps, axis=0).astype(np.float64)
 
 
 def family_ranks(P):
@@ -41,15 +40,11 @@ def family_ranks(P):
 
 
 def ens_p(P, symbol, horizon):
+    # P shape: (n_families, n_samples), seed42-only 所以 n_families=3
     n = P.shape[1]
     R = family_ranks(P)
-    wp = f"{config.MODEL_DIR}/pool_short_h{horizon}/ens_family_w.json"
-    if os.path.exists(wp):
-        w = np.asarray(json.load(open(wp))[symbol]["w"], np.float64)
-    else:
-        w = np.ones(3) / 3
-    wf = np.repeat(w, len(SEEDS)); wf = wf / wf.sum()
-    return (wf[:, None] * R).sum(axis=0)
+    # 等权平均 3 个 family
+    return R.mean(axis=0)
 
 
 def causal_signals_fixed(symbol, horizon=3):
