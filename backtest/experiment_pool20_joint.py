@@ -21,7 +21,7 @@ from validate_eth_quick import (FEATURES, EXTRA_FEATURE_NAMES, BAGGED_SEEDS,
                                 compute_extra_raw, get_X)
 
 MAX_TRAIN = 2_600_000
-MODEL_ROOT = "/workspace/models_saved/pool20_joint"
+MODEL_ROOT = os.path.join(config.MODEL_DIR, "pool20_joint")
 os.makedirs(MODEL_ROOT, exist_ok=True)
 SYMBOLS = ["ETH", "BTC"]
 
