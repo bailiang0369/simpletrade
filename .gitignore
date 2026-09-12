@@ -26,4 +26,8 @@ catboost_info/
 
 # 系统
 .DS_Store
-Thumbs.db
+Thumbs.dbdata/datasets/raw_*.parquet
+data/datasets/ds_*.parquet
+!data/datasets/SHORT_*_P.npy
+!models_saved/pool_short_h10/
+!results/
