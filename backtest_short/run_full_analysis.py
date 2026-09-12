@@ -13,7 +13,10 @@ SEEDS = [42, 49, 56, 63, 70]
 def load_P(sym, h, split):
     Ps = [np.load(f"{config.DS_DIR}/SHORT_{sym}_h{h}_{f}_{split}_P.npy")
           for f in FAMILIES]
-    return np.stack(Ps, axis=0).astype(np.float64)
+    P = np.stack(Ps, axis=0)  # (3,n) 单seed 或 (3,5,n) 5-seed
+    if P.ndim == 3:
+        P = P.reshape(-1, P.shape[-1])  # (15,n)
+    return P.astype(np.float64)
 
 def ens_p(P):
     R = np.zeros_like(P)

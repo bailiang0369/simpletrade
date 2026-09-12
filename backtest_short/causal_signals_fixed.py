@@ -25,7 +25,10 @@ PERCENTILE = 99.0    # 前 N 天历史 conf 的 P99 (top1% 分位点)
 def load_P(symbol, horizon, split):
     Ps = [np.load(f"{config.DS_DIR}/SHORT_{symbol}_h{horizon}_{f}_{split}_P.npy")
           for f in FAMILIES]
-    return np.stack(Ps, axis=0).astype(np.float64)
+    P = np.stack(Ps, axis=0)  # (3,n) 单seed 或 (3,5,n) 5-seed
+    if P.ndim == 3:
+        P = P.reshape(-1, P.shape[-1])  # (15,n)
+    return P.astype(np.float64)
 
 
 def family_ranks(P):
@@ -36,11 +39,8 @@ def family_ranks(P):
 
 
 def ens_p(P, symbol, horizon):
-    # P shape: (n_families, n_samples), seed42-only 所以 n_families=3
-    n = P.shape[1]
-    R = family_ranks(P)
-    # 等权平均 3 个 family
-    return R.mean(axis=0)
+    # P shape: (n_models, n_samples), 3family×1seed=3 或 3family×5seed=15
+    return family_ranks(P).mean(axis=0)
 
 
 def causal_signals_fixed(symbol, horizon=3, win_days=None, percentile=None):
