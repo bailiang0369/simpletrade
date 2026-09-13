@@ -65,11 +65,133 @@
 
 **核心结论：坏月是三个同质模型在同一种市场上共同犯错，靠决策层后处理（校准/砍方向/砍分歧）拦不住；"猜形态补特征"又是过拟合。时序模型即使补足信息量也追不上GBDT，且融合无增益——同样不是正交信号。** 唯一已验证的正交信号是**跨资产特征**（§3.1 已纳入管线，双向同向为正，BTC 最差月大幅改善）；想进一步救 ETH 单月 55，方向仍是引入新的正交数据源或强化跨资产信号。
 
+### 3.3 微观结构特征尝试（已证伪，含经典泄露案例）
+
+**⚠️ 本节极其重要——VPIN 全局分桶是本项目迄今发现的最隐蔽泄露模式，且曾产生"提升巨大"的假阳性.**
+
+#### OFI / VPIN 离线实现实验
+
+基于 raw 1min bar 的 `buy_vol` / `sell_vol` 尝试构建订单流微观结构特征:
+- **OFI** (Order Flow Imbalance, Cont et al. 2014): 多窗口 `ofi_ratio_w = sum(ofi[t-w+1..t]) / sum(v[t-w+1..t])`, 窗口 w ∈ [15,30,60,120,240,480,960]
+- **VPIN** (Volume-synchronized Probability of Informed Trading, Easley et al. 2012): 等 100-bar 桶内 `|OFI| / volume`, 再做桶级滚动 EWMA
+- **EWMA OFI**: 30-bar 指数加权移动平均
+
+初始实验用全局分桶做 VPIN, ETH h15 上看到:
+  - AUC 0.542 → 0.616 (+0.074)
+  - causal P99 准确率 63.8% → 74.0% (+10.2pp)
+  - daily top1% 准确率 63.2% → 80.8% (+17.6pp)
+
+**看起来好到不可能——确实不可能, 全部是泄露.**
+
+#### 泄露机制: VPIN 全局分桶
+
+旧代码:
+```python
+chunk = 100
+for k in range(n // chunk):
+    b_ofi[k] = ofi[k*chunk : (k+1)*chunk].sum()   # 全局分桶!
+vpin = np.repeat(b_ofi / b_v, chunk)             # 贴回所有 bar
+```
+
+**问题**: bucket k 的 early bars (bar k*100, k*100+1, ...) 在预测时还没看到同桶后面的 bars,
+却已经拿到了整个桶的 VPIN. 泄露量在 bucket start 处高达 **38932%**
+(`global_vpin - causal_vpin` 的相对差). bucket 末尾 (bar k*100+99) 才是正确的.
+
+**修复方案**: 改为 rolling causal, 每根 bar t 只用 `[t-N+1 .. t]`:
+```python
+lo = np.maximum(0, np.arange(n) - 99)
+hi = np.arange(1, n+1)
+vpin[t] = |cs[t] - cs[lo[t]]| / (csv[t] - csv[lo[t]])  # 严格因果
+```
+
+#### 修复后真实结果 (ETH h15, 3 seeds rank-ensemble)
+
+| 设置                  | AUC     | AUCΔ    | daily top1% | top1%Δ  |
+|----------------------|:-------:|:-------:|:-----------:|:-------:|
+| BASE 59特征 (无 OFI)  | 0.5423  | —       | 64.67%      | —       |
+| OFI only (16 feats)   | 0.5414  | -0.0009 | 62.63%      | -2.04pp |
+| VPIN only (5 feats, causal) | 0.5422 | -0.0002 | 62.28% | -2.40pp |
+| OFI+VPIN (21 feats, 全 causal) | 0.5425 | +0.0002 | 62.73% | -1.94pp |
+
+**结论**: 纯 causal 下 OFI/VPIN 真实增益 ≈ 0, 甚至略为负.
+原来看到的 +10pp P99 提升, **100% 来自 VPIN 全局分桶泄露.**
+
+这不是数据问题: OFI rolling window 本身是正确的 (向后看, 不泄露),
+VPIN 泄露修复后 OFI 也没有贡献. 结论是:
+- **离线 1min 级 buy_vol/sell_vol 在 15min 预测周期上已经接近无增量**
+  (这些信息已被 price-derived features 间接编码)
+- 学术文献中的 VPIN 优势需要 tick-level 盘口实时数据, 而不是汇总后的 buy_vol/sell_vol
+
+实验脚本已清理: `backtest_short/exp_ofi_vpin.py`, `backtest_short/exp_ofi_vpin_final.py`.
+**后者文件头保留了完整泄露分析作为 case study, 勿删.**
+
+#### 附带教训: shift(-n) 也反证泄露
+
+另一个反证方法: 把 OFI/VPIN 特征 ds_to_raw 索引平移.
+- shift = +15 bar (故意偷看 label 窗口): top1% 准确率暴涨到 93%
+  → 这是泄露的"天花板验证", 证明模型真能利用未来数据
+- shift = -15 bar (用更早数据): top1% 准确率 80.8% ≈ shift=0 的 81.9%
+  → 因为长窗口 OFI (960 bar = 16h) 对 15 bar shift 不敏感,
+    但也说明如果 OFI 有精确的 label-horizon 级泄露, shift=-15 应该暴跌.
+  → shift(-15) 反证法对长窗口特征无效, 只能辅助确认.
+
+#### 本项目已建立的泄露排查方法论
+
+任何新特征都要过这三条:
+
+1. **整体 AUC 探针**: 泄露 → AUC ≥ 0.85; 真实信号 → AUC 0.55-0.65.
+   用 sklearn.metrics.roc_auc_score, 确认 y 是 {0,1} 不是 {-1,+1}.
+2. **Shift test**: 故意 shift forward n bars.
+   如果有泄露, forward shift 会暴涨到接近"偷看答案"级别.
+   如果 forward shift 暴涨到 90%+ 而原位只有 60-70%, 说明泄露贡献了大部分提升.
+3. **局部因果验证**: 对每个 bar t, 手动用"[lo..t] 向前看"重算特征值,
+   对比是否等于实现值. 对 rolling/桶类特征尤其重要: 桶内 early bar 必须只用桶内 early bars,
+   不能用整桶.
+
+### 3.4 短期周期 pipeline (h3/h5/h10/h15)
+
+本次 session 从零构建了一套独立于主线 (h30) 的短期预测 pipeline, 全部在 `backtest_short/`:
+- `build_dataset_short.py`: 多周期数据集构建 (ds_ETH_h3/h5/h10/h15.parquet)
+- `train_pool_short.py`: ETH+BTC 联合训练, LGBM/XGB/CAT 各 5-seed
+- `causal_signals_fixed.py`: 朴素因果阈值评估 (前 30/90 天 P99)
+- `tune_ensemble_short.py`: family 权重调优
+- `sim_flat_3m.py` / `sim_compound_3m.py` / `sim_causal_3m.py`: 回测仿真
+- `sim_h_all_compare.py`: 多 horizon 横向对比
+- `analyze_signals_short.py`: 信号特征分析 (时段/特征偏离/方向差异)
+- `eval15.py` / `run_full_analysis.py`: 评估工具
+- `diag2_quantile.py` / `diag3_why_drop.py` / `diag_acc_drop.py`: 诊断脚本
+
+**短期周期结论** (ETH h15 baseline, 59 price-derived features, LGBM):
+- sklearn AUC = 0.5423
+- 整体准确率 pred≥0.5 = 52.89%
+- 概率预测 std = 0.0165 (所有样本挤在 0.48-0.53, 模型几乎不能区分置信度)
+- 这说明**在短周期 (≤15min) 上 price-derived features 已接近统计上限**,
+  真实 AUC 增量只能来自微观结构 (盘口级, 不是汇总级 buy_vol/sell_vol)
+
+另外 `data_store.py` 新增 `ds_name` 参数 (默认 None, 完全向后兼容),
+现在可以读 `ds_ETH_h15.parquet` 这种带 horizon 后缀的数据集,
+不必重命名或建 symlink.
+
+### 3.5 仓库卫生教训
+
+1. **模型和 .npy 结果不要进 git**. 之前 `.gitignore` 被改动过, 取消了 `results/` 和注释掉了 `*.npy`,
+   导致 60 个模型文件 (100MB+) 和 48 个 .npy 被提交. 已全部清理.
+2. **调试 marker / .bak / log 文件不要进 git**. `.PERSIST_TEST_MARKER_*`, `.gitignore.bak`,
+   `log_*.txt` 都是临时产物, 应该保持 gitignore.
+3. **分支清理**: `feat/ofi-vpin-microstructure` 和 `trae/agent-Gn81us` 最终都被清理:
+   前者直接删除 (全是泄露贡献), 后者 squash merge 入 main 仅保留源码.
+   任何"先跑再说"的 feature 分支, 最终要么合入 main (清理后) 要么删除.
+
 ## 4. 下一步真正值得做的方向（尚未验证）
 
-1. **首选——引入现有数据没有的微观结构输入：实时订单簿快照**（买卖盘失衡、深度分布、价差）。这是唯一未覆盖、且已确认需求的真实增量信号。**注意**：现有 parquet 无历史盘口，无法直接回测，需实时抓取；且其对 30min 预测边际贡献预计小到中等（盘口信息会被随后 30min 新信息稀释）。存储建议：不要存全量盘口，摄入时实时聚合 5s/30s 派生特征。
+1. **首选——引入现有数据没有的微观结构输入：实时订单簿快照**（买卖盘失衡、深度分布、价差）。这是唯一未覆盖、且已确认需求的真实增量信号。
+   **⚠️ 重要注**: 离线版 OFI/VPIN (raw 1min buy_vol/sell_vol 级) 已证伪 (§3.3, 真实增益 ≈ 0,
+   因为汇总数据已被 price-derived features 间接编码). 实时盘口是 tick-level 新数据, 不重复踩这个坑.
+   现有 parquet 无历史盘口, 无法直接回测, 需实时抓取；且其对 30min 预测边际贡献预计小到中等
+   (盘口信息会被随后 30min 新信息稀释). 存储建议: 不要存全量盘口, 摄入时实时聚合 5s/30s 派生特征.
 2. **强化跨资产信号**（已验证有效方向，可继续加码）：当前仅用源币12列单点对齐特征。可扩展：更长回看(z\_240/lr\_480)、源币与目标币**比值/领先滞后**(ETH/BTC 相对动量)、多币种池（SOL/XRP 等加入特征级）。注意跨币对齐保持 searchsorted <=t 无泄漏。
-3. 若目标改为"缩周期(10/15min)提样本量以压方差"：**已被用户否决**——更短周期准确率不会更高，edge 摊薄，且与订单簿是同一原因。
+3. 若目标改为"缩周期(10/15min)提样本量以压方差"：**不推荐**——短期周期 baseline AUC 只有 0.54 (§3.4),
+   真实 edge 极小, 准确率不会更高, edge 摊薄严重. 且短期 edge 更依赖微观结构数据, 而离线微观结构已证伪.
 
 ## 5. 数据与代码状态 / 续跑命令
 
@@ -99,11 +221,19 @@
 
   * `build_dataset.py` — 数据/标签构建（标签=未来30根收盘>锚价，事件合约口径）
 
-  * `data_store.py` / `config.py` — 数据访问 / 切分与目标
+  * `data_store.py` — 数据访问层，`AssetContext(symbol, horizon, ds_name=None)`,
+    新增 ds_name 参数以支持 `ds_ETH_h15.parquet` 这类带 horizon 后缀的数据集,
+    默认行为 (ds_name=None) 完全向后兼容.
+
+  * `config.py` — 切分与目标
 
   * `validate_eth_quick.py` — FEATURES/EXTRA 列表与特征矩阵生成
 
   * `evaluate_no_leak.py` / `show_monthly.py` / `calibrate_gate.py` / `consensus_gate.py` / `direction_gate.py` — 评估与已证伪的门控实现
+
+  * `backtest_short/` — 短期周期 (h3/h5/h10/h15) 完整独立 pipeline,
+    包括数据集构建 / 训练 / 调权 / 因果阈值评估 / 多 horizon 回测 / 诊断脚本.
+    详见 §3.4.
 
 ## 6. 诚实结论
 
