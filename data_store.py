@@ -46,9 +46,11 @@ _SPLIT_EPOCH = {
 
 
 class AssetContext:
-    def __init__(self, symbol, horizon=None):
+    def __init__(self, symbol, horizon=None, ds_name=None):
         self.symbol = symbol
         self.horizon = horizon or config.HORIZON_MIN
+        # ds_name: 覆盖数据集文件名(如 ds_ETH_h3.parquet), 默认 ds_{symbol}.parquet
+        self._ds_name = ds_name or f"ds_{symbol}"
         # ---- 原始K线: 按列读成 numpy (float32) ----
         raw_p = f"{config.DS_DIR}/raw_{symbol}.parquet"
         self.o = pq.read_table(raw_p, columns=["open"])["open"].to_numpy().astype(np.float32)
@@ -61,7 +63,7 @@ class AssetContext:
         gc.collect()
 
         # ---- 特征数据集: 按列逐个读入预分配矩阵(峰值=1列) ----
-        ds_p = f"{config.DS_DIR}/ds_{symbol}.parquet"
+        ds_p = f"{config.DS_DIR}/{self._ds_name}.parquet"
         cols = pq.read_schema(ds_p).names
         self.feat_names = [c for c in cols if c not in ("label", "soft_label", "ret_future", "ts")]
         self.ds_ts = pq.read_table(ds_p, columns=["ts"])["ts"].to_numpy().astype(np.int64)  # 秒
@@ -90,7 +92,7 @@ class AssetContext:
         """惰性加载全部特征矩阵(仅表型模型需要)。"""
         if self._Xall is None:
             n, nf = self._Xall_shape
-            ds_p = f"{config.DS_DIR}/ds_{self.symbol}.parquet"
+            ds_p = f"{config.DS_DIR}/{self._ds_name}.parquet"
             X = np.empty((n, nf), dtype=np.float32)
             for j, c in enumerate(self.feat_names):
                 X[:, j] = pq.read_table(ds_p, columns=[c])[c].to_numpy().astype(np.float32, copy=False)
@@ -112,7 +114,7 @@ class AssetContext:
     def X_subset(self, names, mask):
         """只载入指定特征列并返回 mask 对应行的矩阵 (float32)。
         逐列流式读取+索引, 峰值仅为单列+输出, 供表型模型省内存使用。"""
-        ds_p = f"{config.DS_DIR}/ds_{self.symbol}.parquet"
+        ds_p = f"{config.DS_DIR}/{self._ds_name}.parquet"
         m = np.where(mask)[0]
         out = np.empty((len(m), len(names)), dtype=np.float32)
         for j, nm in enumerate(names):
