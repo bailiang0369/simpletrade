@@ -24,22 +24,10 @@ import config
 from data_store import AssetContext
 from evaluate import evaluate_topk
 
-# === 特征 ===
-FEATURES = [
-    "lr_5", "lr_15", "lr_30", "lr_120", "lr_240", "mom_60",
-    "z_10", "z_30", "z_60", "z_120",
-    "rvol_30", "rvol_60", "rvol_ratio_60_5", "rvol_z_60", "rvol_dir",
-    "pos_30", "pos_60", "pos_120", "pos_240",
-    "dd_240", "ru_240",
-    "hh_dd_60", "ll_ru_60", "body_pos_60",
-    "body_ratio", "up_wick", "lo_wick", "ngreen_10", "gap", "max_range_30",
-    "tbr_z_30", "cvd_30", "cvd_60",
-    "buyvol_strength_30", "tb_act_60", "ts_act_60", "tb_acc_30",
-    "cvd_dir_30", "tbr_hi_60", "lr_skew_60", "up_body_ratio_30", "mom_align_30_240",
-    "hour_sin", "hour_cos", "dow_sin", "dow_cos", "is_us", "is_eu", "ret_day",
-    "pos_tbr_interact", "vol_mom_interact", "pos_cvd_interact",
-    "di_spread", "di_uptrend", "mom_vol_confirm", "z_divergence", "cvd_accel", "vol_cvd_interact", "di_plus",
-]
+import pyarrow.parquet as pq
+_pf = pq.ParquetFile(f"{config.DS_DIR}/ds_BTC.parquet")
+_all_cols = _pf.schema_arrow.names
+FEATURES = [c for c in _all_cols if c not in ("label", "soft_label", "ret_future", "ts")]
 EXTRA_FEATURE_NAMES = [
     "hour_sin_is_us", "hour_cos_is_eu", "hour_sin_rvol_60",
     "consec_up", "consec_dn", "session_minutes", "hour_sin_hour_cos",
