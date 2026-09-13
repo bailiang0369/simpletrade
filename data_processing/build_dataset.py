@@ -34,9 +34,10 @@ CROSS_LR_WINDOWS = (5, 15, 30, 60, 120, 240, 480, 960)
 CROSS_Z_WINDOWS = (30, 60, 120, 240, 480)
 CROSS_RVOL_WINDOWS = (60, 240)
 CROSS_CVD_WINDOWS = (30, 60)
+CROSS_LEAD_LAG_WINDOWS = (15, 30, 60, 120, 240)
 
 
-def build_cross_features(symbol, ts_sec):
+def build_cross_features(symbol, ts_sec, self_close=None):
     """为目标币 symbol 构建源币因果特征, 对齐到每个目标币 raw 行 -> (n, F), 列名带源币前缀。"""
     import pyarrow.parquet as pq
     other = "BTC" if symbol == "ETH" else "ETH"
@@ -84,6 +85,23 @@ def build_cross_features(symbol, ts_sec):
     out = F[idx]                                              # (n, F)
     del F, idx, ots
     gc.collect()
+
+    # 跨资产 Lead-Lag 动量差 (源币与目标币自身收益率之差)
+    if self_close is not None:
+        self_lc = np.log(np.maximum(self_close, 1e-12))
+        ll_cols, ll_names = [], []
+        for k in CROSS_LEAD_LAG_WINDOWS:
+            self_lr = np.full(len(self_close), np.nan, dtype=np.float32)
+            self_lr[k:] = (self_lc[k:] - self_lc[:-k]).astype(np.float32)
+            # 源币在该对齐位置处的 lr_k 列
+            cross_lr_col_idx = names.index(f"{other}_lr_{k}")
+            other_lr_aligned = out[:, cross_lr_col_idx]
+            diff = (other_lr_aligned - self_lr).astype(np.float32)
+            ll_cols.append(diff)
+            ll_names.append(f"leadlag_diff_lr_{k}")
+        out = np.concatenate([out, np.stack(ll_cols, axis=1)], axis=1)
+        names.extend(ll_names)
+
     return out, names
 
 
@@ -128,7 +146,7 @@ def build_symbol_dataset(symbol, horizon=None, overwrite=False):
             soft_label[:-horizon] = (1.0 / (1.0 + np.exp(-ret_clipped))).astype(np.float32)
 
     # ---- 跨资产特征 (源币 -> 目标币, 按目标币每个 raw 行 ts 对齐, 无泄漏) ----
-    X_cross, cross_names = build_cross_features(symbol, ts_sec)   # (n, 12)
+    X_cross, cross_names = build_cross_features(symbol, ts_sec, self_close=close)
     print(f"[dataset] {symbol}: 跨资产特征 {len(cross_names)} 列: {cross_names}", flush=True)
 
     # ---- 探测特征列数(用 numpy 重建一个 probe 表) ----

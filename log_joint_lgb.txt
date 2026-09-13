@@ -1,6 +1,13 @@
   [JOINT] lgb 训练开始
-  [extra] 耗时 4.7s
+  [extra] 耗时 3.0s
   [extra] 耗时 3.2s
-  [JOINT lgb] seed42 iter=144 (317s)
-  [JOINT lgb] seed49 iter=42 (604s)
-  [JOINT lgb] seed56 iter=62 (796s)
+  [JOINT lgb] seed42 iter=144 (168s)
+  [JOINT lgb] seed49 iter=42 (279s)
+  [JOINT lgb] seed56 iter=62 (392s)
+  [JOINT lgb] seed63 iter=8 (490s)
+  [JOINT lgb] seed70 iter=188 (639s)
+  [JOINT lgb] ETH meta_val P saved (647s)
+  [JOINT lgb] ETH test P saved (654s)
+  [JOINT lgb] BTC meta_val P saved (661s)
+  [JOINT lgb] BTC test P saved (668s)
+  [JOINT] lgb 完成 668s
