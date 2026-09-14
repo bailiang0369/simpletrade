@@ -7,6 +7,7 @@
 - raw 只保留 numpy 数组(O/H/L/C/主动买/总量/ts)
 """
 import gc
+import os
 from datetime import datetime, timezone
 
 import numpy as np
@@ -49,8 +50,17 @@ class AssetContext:
     def __init__(self, symbol, horizon=None, ds_name=None):
         self.symbol = symbol
         self.horizon = horizon or config.HORIZON_MIN
-        # ds_name: 覆盖数据集文件名(如 ds_ETH_h3.parquet), 默认 ds_{symbol}.parquet
-        self._ds_name = ds_name or f"ds_{symbol}"
+        # ds_name: 显式传入则用之; 否则按 horizon 自动拼接 ds_{symbol}_h{horizon}.parquet,
+        # 若该文件不存在则 fallback 到 legacy 命名 ds_{symbol}.parquet (向后兼容).
+        if ds_name is not None:
+            self._ds_name = ds_name
+        else:
+            candidate = f"ds_{symbol}_h{self.horizon}"
+            fallback = f"ds_{symbol}"
+            if os.path.exists(f"{config.DS_DIR}/{candidate}.parquet"):
+                self._ds_name = candidate
+            else:
+                self._ds_name = fallback
         # ---- 原始K线: 按列读成 numpy (float32) ----
         raw_p = f"{config.DS_DIR}/raw_{symbol}.parquet"
         self.o = pq.read_table(raw_p, columns=["open"])["open"].to_numpy().astype(np.float32)

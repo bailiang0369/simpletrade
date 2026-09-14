@@ -115,18 +115,10 @@ def train_enhanced_save_models(ctx, extra_raw, model_dir):
     train_retf = ctx.retf("train")
     models = []
     for seed in BAGGED_SEEDS:
-        rng = np.random.default_rng(seed)
-        tr_idx = tr_idx_all.copy()
-        if len(tr_idx) > 2_600_000:
-            keep = rng.choice(len(tr_idx), 2_600_000, replace=False)
-            tr_idx = tr_idx[keep]
+        tr_idx = tr_idx_all.copy()  # 全量使用, 无任何截断
         train_mask = np.zeros_like(trm, dtype=bool); train_mask[tr_idx] = True
         Xtr = get_X(ctx, extra_raw, train_mask); ytr = ctx.label[train_mask].astype(np.float64)
-        if len(tr_idx) < len(tr_idx_all):
-            keep_local = np.where(train_mask[tr_idx_all])[0]
-            raw_w = np.abs(train_retf[keep_local]).astype(np.float64)
-        else:
-            raw_w = np.abs(train_retf).astype(np.float64)
+        raw_w = np.abs(train_retf).astype(np.float64)
         w = np.clip(raw_w * 50, 0.5, 5.0)
         train_hour = (ctx.ds_ts[train_mask] % 86400) // 3600
         bad_hour = ((train_hour >= 17) & (train_hour <= 20)) | (train_hour <= 5)
@@ -200,18 +192,10 @@ def train_catboost_save_models(ctx, extra_raw, model_dir):
     train_retf = ctx.retf("train")
     models = []
     for seed in BAGGED_SEEDS:
-        rng = np.random.default_rng(seed)
-        tr_idx = tr_idx_all.copy()
-        if len(tr_idx) > 2_600_000:
-            keep = rng.choice(len(tr_idx), 2_600_000, replace=False)
-            tr_idx = tr_idx[keep]
+        tr_idx = tr_idx_all.copy()  # 全量使用, 无任何截断
         train_mask = np.zeros_like(trm, dtype=bool); train_mask[tr_idx] = True
         Xtr = get_X(ctx, extra_raw, train_mask); ytr = ctx.label[train_mask].astype(np.int32)
-        if len(tr_idx) < len(tr_idx_all):
-            keep_local = np.where(train_mask[tr_idx_all])[0]
-            raw_w = np.abs(train_retf[keep_local]).astype(np.float64)
-        else:
-            raw_w = np.abs(train_retf).astype(np.float64)
+        raw_w = np.abs(train_retf).astype(np.float64)
         w = np.clip(raw_w * 50, 0.5, 5.0)
         train_pool = Pool(Xtr, ytr, weight=w); eval_pool = Pool(Xes, yes)
         model = CatBoostClassifier(iterations=1000, learning_rate=0.02, depth=8,
