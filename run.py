@@ -39,19 +39,16 @@ def stage_data():
     from build_dataset import build_all
     fetch_data(symbols=config.SYMBOLS)
     build_all()
-    # 构建多周期数据集(如有)
+    # 兜底: 若 h15/h60 数据集不存在, 用默认 ds_{symbol}.parquet 复制一份占位.
+    # (真正的不同 horizon label 应通过 backtest_short/build_dataset_short.py 构建,
+    #  AssetContext 现已按 horizon 自动匹配, 不需要"换床单"式的临时拷贝.)
     for s in config.SYMBOLS:
         for h in (15, 60):
             src = f"{config.DS_DIR}/ds_{s}.parquet"
             dst = f"{config.DS_DIR}/ds_{s}_h{h}.parquet"
-            if not os.path.exists(dst):
-                print(f"[data] 复制 ds_{s}.parquet -> ds_{s}_h{h}.parquet", flush=True)
+            if not os.path.exists(dst) and os.path.exists(src):
+                print(f"[data] 兜底初始化 ds_{s}.parquet -> ds_{s}_h{h}.parquet", flush=True)
                 shutil.copy2(src, dst)
-        # 默认 H=30 作为主数据集
-        src = f"{config.DS_DIR}/ds_{s}.parquet"
-        dst = f"{config.DS_DIR}/ds_{s}_h30.parquet"
-        if not os.path.exists(dst):
-            shutil.copy2(src, dst)
 
 
 # ============================================================
@@ -85,11 +82,7 @@ def stage_multi():
     """多周期(H=15,30,60) GBDT + LSTM 训练。"""
     for s in config.SYMBOLS:
         for h in (15, 30, 60):
-            # 恢复数据集
-            shutil.copy2(f"{config.DS_DIR}/ds_{s}_h{h}.parquet",
-                         f"{config.DS_DIR}/ds_{s}.parquet")
-
-            # GBDT: 用独立子进程训练
+            # GBDT: 用独立子进程训练 (AssetContext 现在自动按 horizon 匹配数据集)
             gbdt_pv = f"{config.DS_DIR}/{s}_gbdt_h{h}_pv.npy"
             gbdt_pt = f"{config.DS_DIR}/{s}_gbdt_h{h}_pt.npy"
             if not os.path.exists(gbdt_pv):
@@ -99,7 +92,7 @@ import sys; sys.path.insert(0, '{os.path.dirname(os.path.abspath(__file__))}')
 import config, numpy as np
 from data_store import AssetContext
 from models.gbdt import GBDTModel
-ctx = AssetContext('{s}')
+ctx = AssetContext('{s}', horizon={h})
 m = GBDTModel(seed=config.SEED)
 m.fit(ctx)
 pv = np.asarray(m.predict(ctx, 'meta_val'), dtype=np.float32)
@@ -111,10 +104,7 @@ print(f'GBDT {s} H={h} done', flush=True)
                 print(f"[multi] GBDT {s} H={h} {'✅' if r.returncode==0 else '❌'} ({time.time()-t0:.0f}s)", flush=True)
 
             gc.collect()
-
-    # 恢复默认数据集
-    shutil.copy2(f"{config.DS_DIR}/ds_{config.SYMBOLS[0]}_h30.parquet",
-                 f"{config.DS_DIR}/ds_{config.SYMBOLS[0]}.parquet")
+    # (无需恢复默认数据集: AssetContext 按 horizon 自动匹配, 无临时拷贝副作用)
 
 
 # ============================================================
@@ -133,13 +123,10 @@ def _eval_symbol(s):
     from evaluate import _month_of_epoch
     results = {}
     for h in HORIZONS:
-        shutil.copy2(f"{config.DS_DIR}/ds_{s}_h{h}.parquet",
-                     f"{config.DS_DIR}/ds_{s}.parquet")
-
         gb_mv = np.load(f"{config.DS_DIR}/{s}_gbdt_h{h}_pv.npy").astype(np.float64)
         gb_te = np.load(f"{config.DS_DIR}/{s}_gbdt_h{h}_pt.npy").astype(np.float64)
 
-        ctx = AssetContext(s, horizon=h)
+        ctx = AssetContext(s, horizon=h)  # 自动匹配 ds_{s}_h{h}.parquet
         y_mv = ctx.y("meta_val"); retf_mv = ctx.retf("meta_val"); ts_mv = ctx.times("meta_val")
         y_te = ctx.y("test"); retf_te = ctx.retf("test"); ts_te = ctx.times("test")
 
@@ -147,8 +134,6 @@ def _eval_symbol(s):
         results[h] = dict(p=p_test, y=y_te, retf=retf_te, ts=ts_te, w=1.0,
                           gb=gb_te)
         del ctx, gb_mv, gb_te; gc.collect()
-
-    shutil.copy2(f"{config.DS_DIR}/ds_{s}_h30.parquet", f"{config.DS_DIR}/ds_{s}.parquet")
 
     # ---- 2. 各周期独立评估 ----
     single_metrics = {}
@@ -192,8 +177,7 @@ def _eval_symbol(s):
 
     if len(common_ts) > 0:
         common_scores = np.array(common_scores)
-        shutil.copy2(f"{config.DS_DIR}/ds_{s}_h30.parquet", f"{config.DS_DIR}/ds_{s}.parquet")
-        ctx0 = AssetContext(s, horizon=30)
+        ctx0 = AssetContext(s, horizon=30)  # 自动匹配 ds_{s}_h30.parquet
         ts0_sec = np.asarray(ctx0.times("test"), dtype="datetime64[s]").astype(np.int64)
         ts_set = set(common_ts)
         mask = np.array([t in ts_set for t in ts0_sec])

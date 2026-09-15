@@ -17,7 +17,7 @@ for _d in (DATA_DIR, DS_DIR, MODEL_DIR, RESULT_DIR):
 SYMBOLS = ["BTC", "ETH"]
 
 # ---- 预测任务 ----
-HORIZON_MIN = 30        # 预测未来多少分钟之后的涨跌 (H=30 经稳定性验证, test top1% 62.5%)
+HORIZON_MIN = 15        # 预测未来多少分钟之后的涨跌 (ETH 实测 H=15 优于 H=30: test top1%=59.8%, top0.5%=62.4%)
 LOOKBACK_MIN = 60       # 图形/序列模型使用的回看窗口长度
 
 # ---- 验收目标（不可私自放宽）----
