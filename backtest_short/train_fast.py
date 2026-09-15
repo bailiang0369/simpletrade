@@ -29,13 +29,9 @@ def joint_masks_weights(ctxs, seed):
         ctx = ctxs[s]
         trm = ctx.split_rows["train"]
         tr_idx_all = np.where(trm)[0]
-        rng = np.random.default_rng(seed)
-        tr_idx = tr_idx_all.copy()
-        if len(tr_idx) > MAX_TRAIN // 2:
-            tr_idx = rng.choice(len(tr_idx), MAX_TRAIN // 2, replace=False)
+        tr_idx = tr_idx_all.copy()  # 全量使用, 无任何截断
         mask = np.zeros_like(trm, dtype=bool); mask[tr_idx] = True
-        keep_local = np.where(mask[tr_idx_all])[0]
-        raw_w = np.abs(ctx.retf("train")[keep_local]).astype(np.float64)
+        raw_w = np.abs(ctx.retf("train")).astype(np.float64)
         w = np.clip(raw_w * 50, 0.5, 5.0)
         outs[s] = (mask, w)
     return outs
