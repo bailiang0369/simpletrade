@@ -26,4 +26,6 @@ catboost_info/
 
 # 系统
 .DS_Store
-Thumbs.db
+Thumbs.dbmh_experiments/union_datasets.pkl
+mh_experiments/union_all_results.json
+mh_experiments/*.pkl
