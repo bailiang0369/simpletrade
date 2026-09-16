@@ -22,26 +22,29 @@ import numpy as np
 import config
 from .base import BaseModel
 
+# 运行时计算的特征 (与 validate_eth_quick.get_X 完全一致)
+from validate_eth_quick import (
+    compute_extra_raw, get_extra_for_mask,
+    FEATURES as BASE_FEATURES,
+    CROSS_FEATURES,
+    EXTRA_FEATURE_NAMES,
+)
+
+def get_X_with_cross(ctx, extra_raw, mask, feats):
+    """表=ds 列 + runtime extra + cross-asset, 与 validate_eth_quick.get_X 对齐。"""
+    import numpy as np
+    X_base = ctx.X_subset(feats, mask)
+    X_extra = get_extra_for_mask(extra_raw, ctx, mask)
+    prefix = "BTC_" if ctx.symbol == "ETH" else "ETH_"
+    X_cross = ctx.X_subset([prefix + f for f in CROSS_FEATURES], mask)
+    return np.column_stack([X_base, X_extra, X_cross])
+
 # 精选子集(49维): 删除了冗余特征(r=1.0)和零贡献特征
 # 精选子集(59维): 基础49维 + 交叉特征10维
 # 新增交叉特征: pos_tbr_interact, vol_mom_interact, pos_cvd_interact, 
 #              di_spread, di_uptrend, mom_vol_confirm, z_divergence, cvd_accel, vol_cvd_interact, di_plus
-FEATURES = [
-    "lr_5", "lr_15", "lr_30", "lr_120", "lr_240", "mom_60",
-    "z_10", "z_30", "z_60", "z_120",
-    "rvol_30", "rvol_60", "rvol_ratio_60_5", "rvol_z_60", "rvol_dir",
-    "pos_30", "pos_60", "pos_120", "pos_240",
-    "dd_240", "ru_240",
-    "hh_dd_60", "ll_ru_60", "body_pos_60",
-    "body_ratio", "up_wick", "lo_wick", "ngreen_10", "gap", "max_range_30",
-    "tbr_z_30", "cvd_30", "cvd_60",
-    "buyvol_strength_30", "tb_act_60", "ts_act_60", "tb_acc_30",
-    "cvd_dir_30", "tbr_hi_60", "lr_skew_60", "up_body_ratio_30", "mom_align_30_240",
-    "hour_sin", "hour_cos", "dow_sin", "dow_cos", "is_us", "is_eu", "ret_day",
-    # 交叉特征 (新增, 显式传递交互信号给树模型)
-    "pos_tbr_interact", "vol_mom_interact", "pos_cvd_interact",
-    "di_spread", "di_uptrend", "mom_vol_confirm", "z_divergence", "cvd_accel", "vol_cvd_interact", "di_plus",
-]
+# 已移到文件顶部, 引用 validate_eth_quick.BASE_FEATURES
+# FEATURES = BASE_FEATURES  # 运行时动态合并 cross+extra
 
 
 def topk_acc_eval(preds, train_data):
@@ -104,12 +107,13 @@ class GBDTModel(BaseModel):
           - 增大训练数据量
         """
         t0 = time.time()
-        feats = list(FEATURES)
+        feats = list(BASE_FEATURES)
+        extra_raw = compute_extra_raw(ctx)
         trm = ctx.split_rows["train"]
         esm = ctx.split_rows["early_stop"]
         tr_idx_all = np.where(trm)[0]
         # 早停集: 用二元标签(评估标准不变)
-        Xes = ctx.X_subset(feats, esm)
+        Xes = get_X_with_cross(ctx, extra_raw, esm, feats)
         yes = ctx.label[esm]
         # 早停集也按置信度约束
         es_conf = np.abs(ctx.soft_label[esm] - 0.5) * 2 if hasattr(ctx, 'soft_label') else np.ones_like(yes)
@@ -125,7 +129,7 @@ class GBDTModel(BaseModel):
                 tr_idx = tr_idx[keep]
             train_mask = np.zeros_like(trm, dtype=bool)
             train_mask[tr_idx] = True
-            Xtr = ctx.X_subset(feats, train_mask)
+            Xtr = get_X_with_cross(ctx, extra_raw, train_mask, feats)
 
             # 训练标签: 始终用二元标签
             # 实验确认: soft_label(连续值)训练时 LightGBM AUC=0.5, 不学习
@@ -178,7 +182,7 @@ class GBDTModel(BaseModel):
         if calibrate_on is not None and calibrate_on in ctx.split_rows:
             from sklearn.linear_model import LogisticRegression
             cal_mask = ctx.split_rows[calibrate_on]
-            cal_p = self._predict_raw(ctx, feats, cal_mask)
+            cal_p = self._predict_raw(ctx, BASE_FEATURES, cal_mask)
             cal_y = ctx.label[cal_mask]
             # 只取有效样本
             fin = np.isfinite(cal_p)
@@ -199,7 +203,9 @@ class GBDTModel(BaseModel):
 
     def _predict_raw(self, ctx, feats, mask):
         """原始预测(排名平均, 未校准), 返回float64概率。"""
-        X = ctx.X_subset(feats, mask)
+        if not hasattr(self, '_extra_raw_cache'):
+            self._extra_raw_cache = compute_extra_raw(ctx)
+        X = get_X_with_cross(ctx, self._extra_raw_cache, mask, feats)
         n = len(X)
         R = np.zeros((len(self.models), n), dtype=np.float64)
         for i, m in enumerate(self.models):
@@ -212,7 +218,7 @@ class GBDTModel(BaseModel):
         如果有 calibrator，应用后校准得到更准确的概率。
         """
         mask = ctx.split_rows[split]
-        p_raw = self._predict_raw(ctx, FEATURES, mask)
+        p_raw = self._predict_raw(ctx, BASE_FEATURES, mask)
         # 应用Platt校准(如果存在)
         if self.calibrator is not None:
             logit_p = np.clip(p_raw, 1e-7, 1-1e-7)

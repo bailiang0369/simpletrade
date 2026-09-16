@@ -89,7 +89,7 @@ def build_cross_features(symbol, ts_sec):
 
 def build_symbol_dataset(symbol, horizon=None, overwrite=False):
     horizon = horizon or config.HORIZON_MIN
-    out = os.path.join(config.DS_DIR, f"ds_{symbol}.parquet")
+    out = os.path.join(config.DS_DIR, f"ds_{symbol}_h{horizon}.parquet")
     if os.path.exists(out) and not overwrite:
         print(f"[dataset] {symbol} exists, skip.")
         return out
