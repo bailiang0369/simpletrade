@@ -1,10 +1,11 @@
 """LGB 30 seeds + CB 15 seeds + ES blend tune + per-hour"""
-import time, gc, numpy as np, datetime, sys, warnings, pandas as pd
+import time, gc, numpy as np, datetime, sys, warnings, os, pandas as pd
 import lightgbm as lgb
 from catboost import CatBoostClassifier, Pool
 from sklearn.metrics import roc_auc_score
 warnings.filterwarnings('ignore')
-sys.path.insert(0,'/workspace'); import config
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import config
 
 def log(m): print(m,flush=True)
 def tpd(n,b): return n*1440/b
@@ -89,10 +90,13 @@ log('\n[5] Baseline top-k...')
 for name,p in [('LGB',lgb_te),('CB',cb_te),('Blended',blended_te)]:
     auc=roc_auc_score(yte,p)
     log(f'  {name}: AUC={auc:.4f}')
-    o=np.argsort(p)
+    conf = np.maximum(p, 1 - p)
+    pred = (p >= 0.5).astype(np.int8)
+    o = np.argsort(-conf)
     for k in [0.003,0.005,0.008,0.01,0.015,0.02,0.03,0.05]:
-        idx=o[-max(int(len(p)*k),1):]
-        log(f'    top{k*100:.1f}%: acc={(yte[idx]==1).mean():.4f} tpd={tpd(len(idx),len(p)):.1f}')
+        idx=o[:max(int(len(p)*k),1)]
+        acc=(pred[idx]==yte[idx]).mean()
+        log(f'    top{k*100:.1f}%: acc={acc:.4f} tpd={tpd(len(idx),len(p)):.1f}')
 
 # Correlation between LGB and CB
 corr=np.corrcoef(lgb_te,cb_te)[0,1]
@@ -149,7 +153,10 @@ for base_name, base_pred in [('LGB',lgb_te),('CB',cb_te),('Blended',blended_te)]
 log(f'\n{"="*60}')
 log('🏆 最终汇总')
 log(f'{"="*60}')
-log(f'  单模型 top0.5% acc: LGB={sum((yte[np.argsort(lgb_te)[-max(int(len(lgb_te)*0.005),1):]]==1).mean() for _ in [0]):.4f} CB={sum((yte[np.argsort(cb_te)[-max(int(len(cb_te)*0.005),1):]]==1).mean() for _ in [0]):.4f} Blend={(yte[np.argsort(blended_te)[-max(int(len(blended_te)*0.005),1):]]==1).mean():.4f}')
+lgb_conf = np.maximum(lgb_te, 1 - lgb_te); lgb_pred = (lgb_te >= 0.5).astype(np.int8); lgb_top = np.argsort(-lgb_conf)[:max(int(len(lgb_te)*0.005),1)]
+cb_conf = np.maximum(cb_te, 1 - cb_te); cb_pred = (cb_te >= 0.5).astype(np.int8); cb_top = np.argsort(-cb_conf)[:max(int(len(cb_te)*0.005),1)]
+bl_conf = np.maximum(blended_te, 1 - blended_te); bl_pred = (blended_te >= 0.5).astype(np.int8); bl_top = np.argsort(-bl_conf)[:max(int(len(blended_te)*0.005),1)]
+log(f'  单模型 top0.5% acc: LGB={(lgb_pred[lgb_top]==yte[lgb_top]).mean():.4f} CB={(cb_pred[cb_top]==yte[cb_top]).mean():.4f} Blend={(bl_pred[bl_top]==yte[bl_top]).mean():.4f}')
 if best_hit:
     best_hit.sort(key=lambda x:-x[2])
     for K,thr,acc,tp in best_hit[:10]: log(f'  ✅ K={K}h P{thr}: acc={acc:.4f} tpd={tp:.1f}')
