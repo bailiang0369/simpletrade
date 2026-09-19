@@ -203,8 +203,9 @@ class GBDTModel(BaseModel):
 
     def _predict_raw(self, ctx, feats, mask):
         """原始预测(排名平均, 未校准), 返回float64概率。"""
-        if not hasattr(self, '_extra_raw_cache'):
+        if not hasattr(self, '_extra_raw_cache') or self._extra_raw_cache.get('_symbol') != ctx.symbol:
             self._extra_raw_cache = compute_extra_raw(ctx)
+            self._extra_raw_cache['_symbol'] = ctx.symbol
         X = get_X_with_cross(ctx, self._extra_raw_cache, mask, feats)
         n = len(X)
         R = np.zeros((len(self.models), n), dtype=np.float64)
