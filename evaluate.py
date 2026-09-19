@@ -32,6 +32,7 @@ def evaluate_topk(p, y, retf, times, coverage=None, return_sel=False):
     coverage = coverage or config.COVERAGE
     p = np.asarray(p, dtype=np.float64)
     y = np.asarray(y, dtype=np.int8)
+    retf = np.asarray(retf, dtype=np.float32)
     conf = np.maximum(p, 1 - p)
     pred = (p >= 0.5).astype(np.int8)
     n = len(p)
