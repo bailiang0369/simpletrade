@@ -114,6 +114,52 @@ def build_features(df: pl.DataFrame) -> pl.DataFrame:
     # 阴跌中波动扩张比: 阴跌时 rvol_60 相对 rvol_30 放大 (恐慌加剧)
     e["dn_rvol_ratio"] = ((lr_240 < 0) * (e["rvol_60"] / (e["rvol_30"] + EPS))).clip(0, 3)
 
+    # ================================================================
+    # 经典技术指标 (Stochastic / RSI / MACD): 多尺度趋势识别
+    # ================================================================
+    # Stochastic K = (C - L.rolling_min) / (H.rolling_max - L.rolling_min)
+    for k in [14, 60, 120]:
+        ll = L.rolling_min(k)
+        hh = H.rolling_max(k)
+        e[f"stoch_k{k}"] = (C - ll) / (hh - ll + EPS)
+    # Stoch D = K 的平滑
+    e["stoch_d14"] = e["stoch_k14"].rolling_mean(3)
+    e["stoch_d60"] = e["stoch_k60"].rolling_mean(5)
+    # 超买超卖交叉
+    e["stoch_cross_14"] = (e["stoch_k14"] - e["stoch_d14"])
+    e["stoch_cross_60"] = (e["stoch_k60"] - e["stoch_d60"])
+
+    # RSI: 基于 close 变化的 14 窗口平均涨跌比
+    delta = C - C.shift(1)
+    gain = delta.clip(lower_bound=0).rolling_mean(14)
+    loss = (-delta.clip(upper_bound=0)).rolling_mean(14)
+    rs = gain / (loss + EPS)
+    e["rsi_14"] = 100 - 100 / (1 + rs)
+    e["rsi_14_z"] = (e["rsi_14"] - e["rsi_14"].rolling_mean(120)) / (e["rsi_14"].rolling_std(120, ddof=1) + EPS)
+    # RSI 多尺度
+    for wp in [6, 30]:
+        g2 = delta.clip(lower_bound=0).rolling_mean(wp)
+        l2 = (-delta.clip(upper_bound=0)).rolling_mean(wp)
+        e[f"rsi_{wp}"] = 100 - 100 / (1 + g2 / (l2 + EPS))
+
+    # MACD: EMA12 - EMA26, 信号线 EMA9, 柱状图
+    ema12 = C.ewm_mean(span=12, adjust=False)
+    ema26 = C.ewm_mean(span=26, adjust=False)
+    macd_line = ema12 - ema26
+    signal = macd_line.ewm_mean(span=9, adjust=False)
+    e["macd_line"] = macd_line / (C + EPS) * 100     # 归一化为百分比
+    e["macd_signal"] = signal / (C + EPS) * 100
+    e["macd_hist"] = (macd_line - signal) / (C + EPS) * 100
+    e["macd_hist_prev"] = e["macd_hist"].shift(1)     # 柱状变化率方向
+
+    # 多尺度 EMA 趋势差
+    ema5 = C.ewm_mean(span=5, adjust=False)
+    ema30 = C.ewm_mean(span=30, adjust=False)
+    ema60 = C.ewm_mean(span=60, adjust=False)
+    e["ema_5_30"] = (ema5 - ema30) / (C + EPS) * 100
+    e["ema_30_60"] = (ema30 - ema60) / (C + EPS) * 100
+    e["ema_slope_10"] = (C - C.shift(10)) / (C + EPS) * 100
+
     out = df.select([expr.alias(name) for name, expr in e.items()])
     return out.cast(pl.Float32)
 
