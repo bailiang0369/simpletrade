@@ -1,3 +1,4 @@
+import os
 """Build features once, save to npz - memory friendly"""
 import warnings; warnings.filterwarnings('ignore')
 import gc, datetime, numpy as np, pandas as pd, sys

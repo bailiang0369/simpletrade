@@ -228,8 +228,7 @@ def build_symbol_dataset(symbol, horizon=None, overwrite=False):
 
 def build_all():
     for s in config.SYMBOLS:
-        for h in (15, 30, 60):
-            build_symbol_dataset(s, horizon=h)
+        build_symbol_dataset(s)
 
 
 if __name__ == "__main__":

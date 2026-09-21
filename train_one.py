@@ -1,7 +1,7 @@
 import time, gc, datetime, numpy as np, pandas as pd
 import lightgbm as lgb
 from sklearn.metrics import roc_auc_score
-import sys, os; sys.path.insert(0, os.path.dirname(os.path.abspath(__file__))); import config
+import sys, os; sys.path.insert(0,'/workspace'); import config
 
 def ts_mask(ts,s,e):
     a=int(datetime.datetime.strptime(s,'%Y-%m-%d').replace(tzinfo=datetime.timezone.utc).timestamp())
@@ -10,7 +10,7 @@ def ts_mask(ts,s,e):
 def tpd(n,b): return n*1440/b
 
 SYM=sys.argv[1]; H=int(sys.argv[2])
-OUT=os.path.join(config.DS_DIR, f'preds_{SYM}_h{H}.npz')
+OUT=f'/workspace/models/preds_{SYM}_h{H}.npz'
 
 df=pd.read_parquet(f'{config.DS_DIR}/ds_{SYM}_h{H}.parquet')
 FEAT=[c for c in df.columns if c not in ('label','soft_label','ret_future','ts')]
@@ -31,14 +31,10 @@ for sd in range(42,42+SEEDS):
     m=lgb.train({**LP,'seed':sd},dtr,num_boost_round=2000,valid_sets=[des],callbacks=[lgb.early_stopping(200,verbose=False)])
     preds.append(m.predict(Xte)); del m; gc.collect()
 avg=np.mean(preds,axis=0); del preds,Xtr,Xes,Xte,ytr,yes; gc.collect()
-conf=np.maximum(avg, 1 - avg)
-pred=(avg >= 0.5).astype(np.int8)
-auc=roc_auc_score(yte,avg); o=np.argsort(-conf)
+auc=roc_auc_score(yte,avg); o=np.argsort(avg)
 print(f'  AUC={auc:.4f} ({time.time()-t0:.0f}s)',flush=True)
 for k in [0.005,0.008,0.01,0.015,0.02,0.03,0.05]:
-    idx=o[:max(int(len(avg)*k),1)]; acc=(pred[idx]==yte[idx]).mean(); tp=tpd(len(idx),total)
-    trade_ret=np.where(pred[idx]==1, ret_te[idx], -ret_te[idx])
-    r=trade_ret.mean()*10000
+    idx=o[-max(int(len(avg)*k),1):]; acc=(yte[idx]==1).mean(); tp=tpd(len(idx),total); r=ret_te[idx].mean()*10000
     flag='✅BOTH' if (acc>=0.65 and tp>=15) else ('✅ACC' if acc>=0.65 else ('✅TPD' if tp>=15 else ''))
     print(f'  top{k*100:.1f}%: acc={acc:.4f} tpd={tp:.1f} ret={r:.1f} {flag}',flush=True)
 np.savez(OUT, pred=avg, y=yte, ret=ret_te, sym=SYM, h=H, auc=auc)

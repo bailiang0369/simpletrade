@@ -34,13 +34,21 @@ from evaluate import evaluate_topk, check_all
 # 阶段1: 数据
 # ============================================================
 def stage_data():
-    """获取原始数据 + 构建特征数据集 (含 H=15, 30, 60 真实标签)。"""
+    """获取原始数据 + 构建特征数据集。"""
     from fetch_data import fetch as fetch_data
-    from build_dataset import build_symbol_dataset
+    from build_dataset import build_all
     fetch_data(symbols=config.SYMBOLS)
+    build_all()
+    # 兜底: 若 h15/h60 数据集不存在, 用默认 ds_{symbol}.parquet 复制一份占位.
+    # (真正的不同 horizon label 应通过 backtest_short/build_dataset_short.py 构建,
+    #  AssetContext 现已按 horizon 自动匹配, 不需要"换床单"式的临时拷贝.)
     for s in config.SYMBOLS:
-        for h in (15, 30, 60):
-            build_symbol_dataset(s, horizon=h)
+        for h in (15, 60):
+            src = f"{config.DS_DIR}/ds_{s}.parquet"
+            dst = f"{config.DS_DIR}/ds_{s}_h{h}.parquet"
+            if not os.path.exists(dst) and os.path.exists(src):
+                print(f"[data] 兜底初始化 ds_{s}.parquet -> ds_{s}_h{h}.parquet", flush=True)
+                shutil.copy2(src, dst)
 
 
 # ============================================================
