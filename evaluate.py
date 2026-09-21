@@ -48,10 +48,11 @@ def evaluate_topk(p, y, retf, times, coverage=None, return_sel=False):
     trades_per_day = k / max(1, n_all_days)
     _, day_counts = np.unique(day_sel, return_counts=True)
 
-    avg_ret = float(retf[sel].mean()) * 1e4   # bps
+    trade_ret = np.where(pred[sel] == 1, retf[sel], -retf[sel])
+    avg_ret = float(trade_ret.mean()) * 1e4   # bps
     up_mask = pred[sel] == 1
     avg_ret_up = float(retf[sel][up_mask].mean()) * 1e4 if up_mask.any() else 0.0
-    avg_ret_dn = float(retf[sel][~up_mask].mean()) * 1e4 if (~up_mask).any() else 0.0
+    avg_ret_dn = float((-retf[sel][~up_mask]).mean()) * 1e4 if (~up_mask).any() else 0.0
 
     # 按月稳定性 (纯 numpy 分组)
     m_sel = _month_of_epoch(sec[sel])
@@ -103,6 +104,7 @@ def evaluate_topk_daily(p, y, retf, times, coverage=None):
     sel = np.where(sel_mask)[0]
     acc = (pred[sel] == y[sel]).mean()
     _, day_counts = np.unique(day[sel], return_counts=True)
+    trade_ret = np.where(pred[sel] == 1, retf[sel], -retf[sel])
     return {
         "coverage": coverage,
         "k": int(len(sel)),
@@ -111,7 +113,7 @@ def evaluate_topk_daily(p, y, retf, times, coverage=None):
         "trades_per_day": float(len(sel) / len(uni)),
         "day_counts_min": int(day_counts.min()),
         "day_counts_max": int(day_counts.max()),
-        "avg_ret_bps": float(retf[sel].mean()) * 1e4,
+        "avg_ret_bps": float(trade_ret.mean()) * 1e4,
     }
 
 
