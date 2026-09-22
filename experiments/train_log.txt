@@ -1,0 +1,424 @@
+
+============================================================
+TRAINING
+============================================================
+  [ETH h5 seed42] feats=56
+    tr=(2361794, 56) es=(132480, 56)
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[101]	valid_0's auc: 0.526388
+    best_iter=101 auc=0.5264 (61s)
+  ETH h5 seed42: OK auc=0.5264
+  [ETH h5 seed49] feats=56
+    tr=(2361794, 56) es=(132480, 56)
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[158]	valid_0's auc: 0.52774
+    best_iter=158 auc=0.5277 (71s)
+  ETH h5 seed49: OK auc=0.5277
+  [ETH h5 seed56] feats=56
+    tr=(2361794, 56) es=(132480, 56)
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[144]	valid_0's auc: 0.527041
+    best_iter=144 auc=0.5270 (67s)
+  ETH h5 seed56: OK auc=0.5270
+  [ETH h5 seed63] feats=56
+    tr=(2361794, 56) es=(132480, 56)
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[172]	valid_0's auc: 0.527693
+    best_iter=172 auc=0.5277 (68s)
+  ETH h5 seed63: OK auc=0.5277
+  [ETH h5 seed70] feats=56
+    tr=(2361794, 56) es=(132480, 56)
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[141]	valid_0's auc: 0.527857
+    best_iter=141 auc=0.5279 (63s)
+  ETH h5 seed70: OK auc=0.5279
+  [ETH h5 seed77] feats=56
+    tr=(2361794, 56) es=(132480, 56)
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[70]	valid_0's auc: 0.526619
+    best_iter=70 auc=0.5266 (53s)
+  ETH h5 seed77: OK auc=0.5266
+  [ETH h5 seed84] feats=56
+    tr=(2361794, 56) es=(132480, 56)
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[103]	valid_0's auc: 0.526708
+    best_iter=103 auc=0.5267 (56s)
+  ETH h5 seed84: OK auc=0.5267
+  [ETH h5 seed91] feats=56
+    tr=(2361794, 56) es=(132480, 56)
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[105]	valid_0's auc: 0.52794
+    best_iter=105 auc=0.5279 (61s)
+  ETH h5 seed91: OK auc=0.5279
+  [ETH h5 seed98] feats=56
+    tr=(2361794, 56) es=(132480, 56)
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[112]	valid_0's auc: 0.526573
+    best_iter=112 auc=0.5266 (62s)
+  ETH h5 seed98: OK auc=0.5266
+  [ETH h5 seed105] feats=56
+    tr=(2361794, 56) es=(132480, 56)
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[110]	valid_0's auc: 0.527342
+    best_iter=110 auc=0.5273 (63s)
+  ETH h5 seed105: OK auc=0.5273
+  [ETH h15 seed42] feats=56
+    tr=(2361794, 56) es=(132480, 56)
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[29]	valid_0's auc: 0.53324
+    best_iter=29 auc=0.5332 (44s)
+  ETH h15 seed42: OK auc=0.5332
+  [ETH h15 seed49] feats=56
+    tr=(2361794, 56) es=(132480, 56)
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[34]	valid_0's auc: 0.533266
+    best_iter=34 auc=0.5333 (45s)
+  ETH h15 seed49: OK auc=0.5333
+  [ETH h15 seed56] feats=56
+    tr=(2361794, 56) es=(132480, 56)
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[29]	valid_0's auc: 0.533127
+    best_iter=29 auc=0.5331 (41s)
+  ETH h15 seed56: OK auc=0.5331
+  [ETH h15 seed63] feats=56
+    tr=(2361794, 56) es=(132480, 56)
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[38]	valid_0's auc: 0.533066
+    best_iter=38 auc=0.5331 (44s)
+  ETH h15 seed63: OK auc=0.5331
+  [ETH h15 seed70] feats=56
+    tr=(2361794, 56) es=(132480, 56)
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[25]	valid_0's auc: 0.532115
+    best_iter=25 auc=0.5321 (40s)
+  ETH h15 seed70: OK auc=0.5321
+  [ETH h15 seed77] feats=56
+    tr=(2361794, 56) es=(132480, 56)
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[77]	valid_0's auc: 0.533062
+    best_iter=77 auc=0.5331 (49s)
+  ETH h15 seed77: OK auc=0.5331
+  [ETH h15 seed84] feats=56
+    tr=(2361794, 56) es=(132480, 56)
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[31]	valid_0's auc: 0.532912
+    best_iter=31 auc=0.5329 (41s)
+  ETH h15 seed84: OK auc=0.5329
+  [ETH h15 seed91] feats=56
+    tr=(2361794, 56) es=(132480, 56)
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[122]	valid_0's auc: 0.533682
+    best_iter=122 auc=0.5337 (57s)
+  ETH h15 seed91: OK auc=0.5337
+  [ETH h15 seed98] feats=56
+    tr=(2361794, 56) es=(132480, 56)
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[27]	valid_0's auc: 0.533606
+    best_iter=27 auc=0.5336 (41s)
+  ETH h15 seed98: OK auc=0.5336
+  [ETH h15 seed105] feats=56
+    tr=(2361794, 56) es=(132480, 56)
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[19]	valid_0's auc: 0.534138
+    best_iter=19 auc=0.5341 (41s)
+  ETH h15 seed105: OK auc=0.5341
+  [ETH h30 seed42] feats=56
+    tr=(2361794, 56) es=(132480, 56)
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[6]	valid_0's auc: 0.530779
+    best_iter=6 auc=0.5308 (38s)
+  ETH h30 seed42: OK auc=0.5308
+  [ETH h30 seed49] feats=56
+    tr=(2361794, 56) es=(132480, 56)
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[27]	valid_0's auc: 0.529923
+    best_iter=27 auc=0.5299 (42s)
+  ETH h30 seed49: OK auc=0.5299
+  [ETH h30 seed56] feats=56
+    tr=(2361794, 56) es=(132480, 56)
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[86]	valid_0's auc: 0.528094
+    best_iter=86 auc=0.5281 (51s)
+  ETH h30 seed56: OK auc=0.5281
+  [ETH h30 seed63] feats=56
+    tr=(2361794, 56) es=(132480, 56)
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[23]	valid_0's auc: 0.530114
+    best_iter=23 auc=0.5301 (42s)
+  ETH h30 seed63: OK auc=0.5301
+  [ETH h30 seed70] feats=56
+    tr=(2361794, 56) es=(132480, 56)
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[59]	valid_0's auc: 0.528517
+    best_iter=59 auc=0.5285 (48s)
+  ETH h30 seed70: OK auc=0.5285
+  [ETH h30 seed77] feats=56
+    tr=(2361794, 56) es=(132480, 56)
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[18]	valid_0's auc: 0.530642
+    best_iter=18 auc=0.5306 (38s)
+  ETH h30 seed77: OK auc=0.5306
+  [ETH h30 seed84] feats=56
+    tr=(2361794, 56) es=(132480, 56)
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[26]	valid_0's auc: 0.530432
+    best_iter=26 auc=0.5304 (42s)
+  ETH h30 seed84: OK auc=0.5304
+  [ETH h30 seed91] feats=56
+    tr=(2361794, 56) es=(132480, 56)
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[12]	valid_0's auc: 0.529941
+    best_iter=12 auc=0.5299 (38s)
+  ETH h30 seed91: OK auc=0.5299
+  [ETH h30 seed98] feats=56
+    tr=(2361794, 56) es=(132480, 56)
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[9]	valid_0's auc: 0.529746
+    best_iter=9 auc=0.5297 (37s)
+  ETH h30 seed98: OK auc=0.5297
+  [ETH h30 seed105] feats=56
+    tr=(2361794, 56) es=(132480, 56)
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[10]	valid_0's auc: 0.530646
+    best_iter=10 auc=0.5306 (37s)
+  ETH h30 seed105: OK auc=0.5306
+  [BTC h5 seed42] feats=56
+    tr=(2361825, 56) es=(132480, 56)
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[250]	valid_0's auc: 0.52677
+    best_iter=250 auc=0.5268 (83s)
+  BTC h5 seed42: OK auc=0.5268
+  [BTC h5 seed49] feats=56
+    tr=(2361825, 56) es=(132480, 56)
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[195]	valid_0's auc: 0.525717
+    best_iter=195 auc=0.5257 (74s)
+  BTC h5 seed49: OK auc=0.5257
+  [BTC h5 seed56] feats=56
+    tr=(2361825, 56) es=(132480, 56)
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[100]	valid_0's auc: 0.525214
+    best_iter=100 auc=0.5252 (59s)
+  BTC h5 seed56: OK auc=0.5252
+  [BTC h5 seed63] feats=56
+    tr=(2361825, 56) es=(132480, 56)
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[169]	valid_0's auc: 0.525829
+    best_iter=169 auc=0.5258 (70s)
+  BTC h5 seed63: OK auc=0.5258
+  [BTC h5 seed70] feats=56
+    tr=(2361825, 56) es=(132480, 56)
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[78]	valid_0's auc: 0.525464
+    best_iter=78 auc=0.5255 (53s)
+  BTC h5 seed70: OK auc=0.5255
+  [BTC h5 seed77] feats=56
+    tr=(2361825, 56) es=(132480, 56)
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[174]	valid_0's auc: 0.526214
+    best_iter=174 auc=0.5262 (75s)
+  BTC h5 seed77: OK auc=0.5262
+  [BTC h5 seed84] feats=56
+    tr=(2361825, 56) es=(132480, 56)
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[237]	valid_0's auc: 0.526182
+    best_iter=237 auc=0.5262 (87s)
+  BTC h5 seed84: OK auc=0.5262
+  [BTC h5 seed91] feats=56
+    tr=(2361825, 56) es=(132480, 56)
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[120]	valid_0's auc: 0.525453
+    best_iter=120 auc=0.5255 (66s)
+  BTC h5 seed91: OK auc=0.5255
+  [BTC h5 seed98] feats=56
+    tr=(2361825, 56) es=(132480, 56)
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[189]	valid_0's auc: 0.525602
+    best_iter=189 auc=0.5256 (75s)
+  BTC h5 seed98: OK auc=0.5256
+  [BTC h5 seed105] feats=56
+    tr=(2361825, 56) es=(132480, 56)
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[151]	valid_0's auc: 0.525318
+    best_iter=151 auc=0.5253 (68s)
+  BTC h5 seed105: OK auc=0.5253
+  [BTC h15 seed42] feats=56
+    tr=(2361825, 56) es=(132480, 56)
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[100]	valid_0's auc: 0.532945
+    best_iter=100 auc=0.5329 (61s)
+  BTC h15 seed42: OK auc=0.5329
+  [BTC h15 seed49] feats=56
+    tr=(2361825, 56) es=(132480, 56)
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[4]	valid_0's auc: 0.53273
+    best_iter=4 auc=0.5327 (41s)
+  BTC h15 seed49: OK auc=0.5327
+  [BTC h15 seed56] feats=56
+    tr=(2361825, 56) es=(132480, 56)
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[28]	valid_0's auc: 0.532068
+    best_iter=28 auc=0.5321 (43s)
+  BTC h15 seed56: OK auc=0.5321
+  [BTC h15 seed63] feats=56
+    tr=(2361825, 56) es=(132480, 56)
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[28]	valid_0's auc: 0.532238
+    best_iter=28 auc=0.5322 (43s)
+  BTC h15 seed63: OK auc=0.5322
+  [BTC h15 seed70] feats=56
+    tr=(2361825, 56) es=(132480, 56)
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[184]	valid_0's auc: 0.532003
+    best_iter=184 auc=0.5320 (76s)
+  BTC h15 seed70: OK auc=0.5320
+  [BTC h15 seed77] feats=56
+    tr=(2361825, 56) es=(132480, 56)
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[110]	valid_0's auc: 0.532785
+    best_iter=110 auc=0.5328 (58s)
+  BTC h15 seed77: OK auc=0.5328
+  [BTC h15 seed84] feats=56
+    tr=(2361825, 56) es=(132480, 56)
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[94]	valid_0's auc: 0.532357
+    best_iter=94 auc=0.5324 (55s)
+  BTC h15 seed84: OK auc=0.5324
+  [BTC h15 seed91] feats=56
+    tr=(2361825, 56) es=(132480, 56)
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[95]	valid_0's auc: 0.533175
+    best_iter=95 auc=0.5332 (54s)
+  BTC h15 seed91: OK auc=0.5332
+  [BTC h15 seed98] feats=56
+    tr=(2361825, 56) es=(132480, 56)
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[174]	valid_0's auc: 0.533554
+    best_iter=174 auc=0.5336 (68s)
+  BTC h15 seed98: OK auc=0.5336
+  [BTC h15 seed105] feats=56
+    tr=(2361825, 56) es=(132480, 56)
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[100]	valid_0's auc: 0.533493
+    best_iter=100 auc=0.5335 (60s)
+  BTC h15 seed105: OK auc=0.5335
+  [BTC h30 seed42] feats=56
+    tr=(2361825, 56) es=(132480, 56)
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[55]	valid_0's auc: 0.531955
+    best_iter=55 auc=0.5320 (46s)
+  BTC h30 seed42: OK auc=0.5320
+  [BTC h30 seed49] feats=56
+    tr=(2361825, 56) es=(132480, 56)
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[63]	valid_0's auc: 0.533424
+    best_iter=63 auc=0.5334 (52s)
+  BTC h30 seed49: OK auc=0.5334
+  [BTC h30 seed56] feats=56
+    tr=(2361825, 56) es=(132480, 56)
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[106]	valid_0's auc: 0.532578
+    best_iter=106 auc=0.5326 (56s)
+  BTC h30 seed56: OK auc=0.5326
+  [BTC h30 seed63] feats=56
+    tr=(2361825, 56) es=(132480, 56)
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[28]	valid_0's auc: 0.531826
+    best_iter=28 auc=0.5318 (42s)
+  BTC h30 seed63: OK auc=0.5318
+  [BTC h30 seed70] feats=56
+    tr=(2361825, 56) es=(132480, 56)
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[55]	valid_0's auc: 0.532972
+    best_iter=55 auc=0.5330 (50s)
+  BTC h30 seed70: OK auc=0.5330
+  [BTC h30 seed77] feats=56
+    tr=(2361825, 56) es=(132480, 56)
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[155]	valid_0's auc: 0.533629
+    best_iter=155 auc=0.5336 (64s)
+  BTC h30 seed77: OK auc=0.5336
+  [BTC h30 seed84] feats=56
+    tr=(2361825, 56) es=(132480, 56)
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[59]	valid_0's auc: 0.533167
+    best_iter=59 auc=0.5332 (48s)
+  BTC h30 seed84: OK auc=0.5332
+  [BTC h30 seed91] feats=56
+    tr=(2361825, 56) es=(132480, 56)
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[159]	valid_0's auc: 0.533598
+    best_iter=159 auc=0.5336 (65s)
+  BTC h30 seed91: OK auc=0.5336
+  [BTC h30 seed98] feats=56
+    tr=(2361825, 56) es=(132480, 56)
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[141]	valid_0's auc: 0.532674
+    best_iter=141 auc=0.5327 (62s)
+  BTC h30 seed98: OK auc=0.5327
+  [BTC h30 seed105] feats=56
+    tr=(2361825, 56) es=(132480, 56)
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[145]	valid_0's auc: 0.533478
+    best_iter=145 auc=0.5335 (67s)
+  BTC h30 seed105: OK auc=0.5335
