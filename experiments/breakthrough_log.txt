@@ -1,0 +1,55 @@
+[LightGBM] [Fatal] Cannot change max_bin after constructed Dataset handle.
+================================================================================
+ETH h15 单模型突破任务 — 2026-09-22 深夜
+================================================================================
+
+[0.0m] --- 0. 确认 baseline ---
+  baseline meta_val AUC=0.5340
+    q=99.0 → 57.95% @ 14.0t (5110)
+    q=99.2 → 58.55% @ 11.5t (4195)
+    q=99.4 → 60.11% @ 8.6t (3126)
+    q=99.5 → 60.65% @ 7.2t (2635)
+    q=99.8 → 59.92% @ 3.4t (1245)
+  baseline test AUC=0.5424
+    q=99.0 → 62.01% @ 13.7t (4591)
+    q=99.2 → 62.92% @ 11.1t (3724)
+    q=99.4 → 64.04% @ 8.3t (2756)
+    q=99.5 → 64.54% @ 6.9t (2301)
+    q=99.8 → 67.02% @ 3.1t (1031)
+
+[0.2m] === 方向 1: LGB 超参数 grid search (ETH h15) ===
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[50]	valid_0's auc: 0.53257
+  [1/12] nL=63 mD=200 mB=255 lr=0.05 fF=0.8 → auc_es=0.5326 it=50 (36s)
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[42]	valid_0's auc: 0.533678
+  [2/12] nL=127 mD=200 mB=255 lr=0.05 fF=0.8 → auc_es=0.5337 it=42 (38s)
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[19]	valid_0's auc: 0.533475
+  [3/12] nL=255 mD=200 mB=255 lr=0.05 fF=0.8 → auc_es=0.5335 it=19 (35s)
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[145]	valid_0's auc: 0.532744
+  [4/12] nL=127 mD=100 mB=255 lr=0.05 fF=0.8 → auc_es=0.5327 it=145 (51s)
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[181]	valid_0's auc: 0.533726
+  [5/12] nL=127 mD=50 mB=255 lr=0.05 fF=0.8 → auc_es=0.5337 it=181 (55s)
+Traceback (most recent call last):
+  File "/workspace/run_breakthrough.py", line 592, in <module>
+    main()
+  File "/workspace/run_breakthrough.py", line 568, in main
+    best_hp, grid_all = run_hparam_grid()
+                        ^^^^^^^^^^^^^^^^^
+  File "/workspace/run_breakthrough.py", line 113, in run_hparam_grid
+    m = lgb.train(params, tr_ds, num_boost_round=5000, valid_sets=[es_ds],
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/root/.pyenv/versions/3.12.13/lib/python3.12/site-packages/lightgbm/engine.py", line 243, in train
+    train_set._update_params(params)._set_predictor(predictor)
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/root/.pyenv/versions/3.12.13/lib/python3.12/site-packages/lightgbm/basic.py", line 2766, in _update_params
+    raise LightGBMError(_LIB.LGBM_GetLastError().decode("utf-8"))
+lightgbm.basic.LightGBMError: Cannot change max_bin after constructed Dataset handle.
