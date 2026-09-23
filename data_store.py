@@ -75,7 +75,10 @@ class AssetContext:
         # ---- 特征数据集: 按列逐个读入预分配矩阵(峰值=1列) ----
         ds_p = f"{config.DS_DIR}/{self._ds_name}.parquet"
         cols = pq.read_schema(ds_p).names
-        self.feat_names = [c for c in cols if c not in ("label", "soft_label", "ret_future", "ts")]
+        _META_COLS = ("label", "soft_label", "ret_future", "ts",
+                      "__fragment_index", "__batch_index",
+                      "__last_in_fragment", "__filename")
+        self.feat_names = [c for c in cols if c not in _META_COLS]
         self.ds_ts = pq.read_table(ds_p, columns=["ts"])["ts"].to_numpy().astype(np.int64)  # 秒
         self.label = pq.read_table(ds_p, columns=["label"])["label"].to_numpy().astype(np.int8)
         self.soft_label = pq.read_table(ds_p, columns=["soft_label"])["soft_label"].to_numpy().astype(np.float32)
