@@ -7,11 +7,12 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import os, sys
 import numpy as np
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import config
 import lightgbm as lgb
-from validate_eth_quick import FEATURES, EXTRA_FEATURE_NAMES
+from validate_eth_quick import FEATURES, EXTRA_FEATURE_NAMES, CROSS_FEATURES
 
-MODEL_ROOT = "/workspace/models_saved/pool20_joint"
-NAMES = FEATURES + EXTRA_FEATURE_NAMES
+MODEL_ROOT = os.path.join(config.PROJECT_DIR, "models_saved", "pool20_joint")
+NAMES = FEATURES + EXTRA_FEATURE_NAMES + ["CROSS_" + f for f in CROSS_FEATURES]
 
 scores = np.zeros(len(NAMES))
 for seed in (42, 49, 56, 63, 70):
