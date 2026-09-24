@@ -1,0 +1,4 @@
+[0] Build BTC h15 + funding features...
+  base feats from features.py: 56
+  funding feats: 12
+  base=(3501195, 56) funding=(3501195, 12)

@@ -1,0 +1,9 @@
+[1] Build BTC h15 funding splits (streaming)...
+  base feats: 56
+  funding feats: 12
+Traceback (most recent call last):
+  File "<stdin>", line 51, in <module>
+  File "/root/.pyenv/versions/3.12.13/lib/python3.12/site-packages/numpy/lib/_npyio_impl.py", line 568, in save
+    file_ctx = open(file, "wb")
+               ^^^^^^^^^^^^^^^^
+FileNotFoundError: [Errno 2] No such file or directory: 'data/splits_npy/BTC_h15f_train_X.npy'
