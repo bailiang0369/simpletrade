@@ -1,0 +1,24 @@
+[0] Build ETH cross feats...
+  17 cross feats
+  Cross feats aligned to BTC raw ts
+
+[1] Load splits...
+  Base X: tr=(2409345, 56) es=(43200, 56) te=(478066, 56)
+  Cross:  17 feats
+  Combined: tr=(2409345, 73)
+
+[2] Train 4-way...
+  baseline (56)            : es=0.5426 te=0.5363 (172s)
+  +ETH cross (73)          : es=0.5442 te=0.5376 (284s)
+  baseline+negw            : es=0.5429 te=0.5374 (196s)
+  cross+negw               : es=0.5436 te=0.5383 (261s)
+
+=======================================================
+SUMMARY  (ETH h15 ref te=0.5432)
+=======================================================
+  baseline            : es=0.5426 te=0.5363  Δ=+0.0000
+  cross               : es=0.5442 te=0.5376  Δ=+0.0013
+  +negw               : es=0.5429 te=0.5374  Δ=+0.0011
+  +cross+negw         : es=0.5436 te=0.5383  Δ=+0.0020 ★ BEST
+  BEST te=0.5383  gap vs ETH=0.0049
+TOTAL: 918s

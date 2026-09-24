@@ -1,0 +1,3 @@
+=== Step 1: Build BTC+ETH cross ===
+  Built 17 ETH cross feats
+  BTC h15 + 17 ETH cross → 3,500,185 rows, 73 cols
