@@ -1,0 +1,2 @@
+=== STAGE 1: BTC Horizon Scan ===
+BTC h 5: es=0.5327 te=0.5344 (918s)

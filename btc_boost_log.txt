@@ -1,0 +1,71 @@
+============================================================
+[0s] STAGE 1: BTC Baseline — All Horizons
+============================================================
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[317]	valid_0's auc: 0.53259
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[180]	valid_0's auc: 0.531978
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[293]	valid_0's auc: 0.532412
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[400]	valid_0's auc: 0.53218
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[152]	valid_0's auc: 0.530889
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[271]	valid_0's auc: 0.531384
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[182]	valid_0's auc: 0.531793
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[207]	valid_0's auc: 0.532458
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[421]	valid_0's auc: 0.532101
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[146]	valid_0's auc: 0.532207
+Traceback (most recent call last):
+  File "/workspace/btc_boost.py", line 96, in <module>
+    auc_te, auc_es, pte, pes = train_lgb_rank('BTC', h, splits)
+                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/btc_boost.py", line 74, in train_lgb_rank
+    auc_te = roc_auc_score(yte, p_te)
+             ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/root/.pyenv/versions/3.12.13/lib/python3.12/site-packages/sklearn/utils/_param_validation.py", line 218, in wrapper
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "/root/.pyenv/versions/3.12.13/lib/python3.12/site-packages/sklearn/metrics/_ranking.py", line 733, in roc_auc_score
+    return _average_binary_score(
+           ^^^^^^^^^^^^^^^^^^^^^^
+  File "/root/.pyenv/versions/3.12.13/lib/python3.12/site-packages/sklearn/metrics/_base.py", line 77, in _average_binary_score
+    return binary_metric(y_true, y_score, sample_weight=sample_weight)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/root/.pyenv/versions/3.12.13/lib/python3.12/site-packages/sklearn/metrics/_ranking.py", line 478, in _binary_roc_auc_score
+    fpr, tpr, _ = roc_curve(y_true, y_score, sample_weight=sample_weight)
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/root/.pyenv/versions/3.12.13/lib/python3.12/site-packages/sklearn/utils/_param_validation.py", line 191, in wrapper
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "/root/.pyenv/versions/3.12.13/lib/python3.12/site-packages/sklearn/metrics/_ranking.py", line 1319, in roc_curve
+    _, fps, _, tps, thresholds = confusion_matrix_at_thresholds(
+                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/root/.pyenv/versions/3.12.13/lib/python3.12/site-packages/sklearn/utils/validation.py", line 80, in inner_f
+    return f(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^
+  File "/root/.pyenv/versions/3.12.13/lib/python3.12/site-packages/sklearn/utils/_param_validation.py", line 191, in wrapper
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "/root/.pyenv/versions/3.12.13/lib/python3.12/site-packages/sklearn/metrics/_ranking.py", line 1021, in confusion_matrix_at_thresholds
+    _sort_inputs_and_compute_classification_thresholds(
+  File "/root/.pyenv/versions/3.12.13/lib/python3.12/site-packages/sklearn/metrics/_ranking.py", line 892, in _sort_inputs_and_compute_classification_thresholds
+    check_consistent_length(y_true, y_score, sample_weight)
+  File "/root/.pyenv/versions/3.12.13/lib/python3.12/site-packages/sklearn/utils/validation.py", line 458, in check_consistent_length
+    raise ValueError(
+ValueError: Found input variables with inconsistent numbers of samples: [480956, 10]

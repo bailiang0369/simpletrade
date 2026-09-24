@@ -1,0 +1,85 @@
+=== S3: ETH Tricks -> BTC ===
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[68]	valid_0's auc: 0.532349
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[142]	valid_0's auc: 0.532702
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[36]	valid_0's auc: 0.532557
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[59]	valid_0's auc: 0.532069
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[90]	valid_0's auc: 0.53318
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[194]	valid_0's auc: 0.535496
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[166]	valid_0's auc: 0.53602
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[50]	valid_0's auc: 0.535096
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[309]	valid_0's auc: 0.538908
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[159]	valid_0's auc: 0.535447
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[169]	valid_0's auc: 0.533312
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[111]	valid_0's auc: 0.532132
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[80]	valid_0's auc: 0.533821
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[63]	valid_0's auc: 0.53312
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[59]	valid_0's auc: 0.532154
+  BTC p15/p20/p30 pre-computed
+
+--- Tricks on BTC h15 ---
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[68]	valid_0's auc: 0.532349
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[142]	valid_0's auc: 0.532702
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[36]	valid_0's auc: 0.532557
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[59]	valid_0's auc: 0.532069
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[90]	valid_0's auc: 0.53318
+  baseline                      : es=0.5329 te=0.5373 q99=60.5%@16.7t q99.5=60.6%@8.4t (237s)
+[LightGBM] [Fatal] Length of weights differs from the length of #data
+Traceback (most recent call last):
+  File "<stdin>", line 90, in <module>
+  File "<stdin>", line 40, in run
+  File "/root/.pyenv/versions/3.12.13/lib/python3.12/site-packages/lightgbm/engine.py", line 296, in train
+    booster = Booster(params=params, train_set=train_set)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/root/.pyenv/versions/3.12.13/lib/python3.12/site-packages/lightgbm/basic.py", line 3758, in __init__
+    train_set.construct()
+  File "/root/.pyenv/versions/3.12.13/lib/python3.12/site-packages/lightgbm/basic.py", line 2574, in construct
+    self._lazy_init(
+  File "/root/.pyenv/versions/3.12.13/lib/python3.12/site-packages/lightgbm/basic.py", line 2193, in _lazy_init
+    self.set_weight(weight)
+  File "/root/.pyenv/versions/3.12.13/lib/python3.12/site-packages/lightgbm/basic.py", line 3136, in set_weight
+    self.set_field("weight", weight)
+  File "/root/.pyenv/versions/3.12.13/lib/python3.12/site-packages/lightgbm/basic.py", line 2859, in set_field
+    _safe_call(
+  File "/root/.pyenv/versions/3.12.13/lib/python3.12/site-packages/lightgbm/basic.py", line 297, in _safe_call
+    raise LightGBMError(_LIB.LGBM_GetLastError().decode("utf-8"))
+lightgbm.basic.LightGBMError: Length of weights differs from the length of #data

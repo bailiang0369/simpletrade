@@ -1,0 +1,416 @@
+Sanity: ret_future length vs npy train length...
+  ret_train len=2,361,825  npy_train_X=2,361,825  match=True
+
+=== S3: ETH Tricks -> BTC h15 (correct alignment) ===
+  BTC h15 train |ret|: mean=0.214% p90=0.480%
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[68]	valid_0's auc: 0.532349
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[142]	valid_0's auc: 0.532702
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[36]	valid_0's auc: 0.532557
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[59]	valid_0's auc: 0.532069
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[90]	valid_0's auc: 0.53318
+  baseline                      : es=0.5329 te=0.5373 q99=60.5%@16.7t q99.5=60.6%@8.4t (241s)
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[59]	valid_0's auc: 0.533967
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[153]	valid_0's auc: 0.534261
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[53]	valid_0's auc: 0.533671
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[68]	valid_0's auc: 0.534046
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[86]	valid_0's auc: 0.534114
+  negw top+bot10%x0.2           : es=0.5343 te=0.5378 q99=60.2%@16.7t q99.5=61.8%@8.4t (250s)
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[325]	valid_0's auc: 0.533503
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[144]	valid_0's auc: 0.533714
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[91]	valid_0's auc: 0.533214
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[273]	valid_0's auc: 0.533672
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[75]	valid_0's auc: 0.533714
+  negw top+bot10%x0.3           : es=0.5341 te=0.5379 q99=59.9%@16.7t q99.5=60.7%@8.4t (325s)
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[63]	valid_0's auc: 0.533137
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[214]	valid_0's auc: 0.535602
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[149]	valid_0's auc: 0.534287
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[160]	valid_0's auc: 0.534392
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[155]	valid_0's auc: 0.534733
+  negw top+bot10%x0.5           : es=0.5349 te=0.5374 q99=59.9%@16.7t q99.5=61.1%@8.4t (300s)
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[30]	valid_0's auc: 0.531976
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[143]	valid_0's auc: 0.533417
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[47]	valid_0's auc: 0.532803
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[69]	valid_0's auc: 0.532918
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[104]	valid_0's auc: 0.533763
+  negw bot10%x0.3 only          : es=0.5335 te=0.5367 q99=59.6%@16.7t q99.5=59.8%@8.4t (237s)
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[88]	valid_0's auc: 0.533716
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[149]	valid_0's auc: 0.534042
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[314]	valid_0's auc: 0.533222
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[63]	valid_0's auc: 0.533478
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[110]	valid_0's auc: 0.534115
+  negw top10%x0.3 only          : es=0.5342 te=0.5381 q99=58.9%@16.7t q99.5=60.0%@8.4t (295s)
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[27]	valid_0's auc: 0.532824
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[28]	valid_0's auc: 0.532238
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[199]	valid_0's auc: 0.533611
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[59]	valid_0's auc: 0.531988
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[95]	valid_0's auc: 0.532392
+  denoise eps=0.0003            : es=0.5331 te=0.5366 q99=60.1%@16.7t q99.5=60.1%@8.4t (214s)
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[51]	valid_0's auc: 0.53285
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[20]	valid_0's auc: 0.532212
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[114]	valid_0's auc: 0.533371
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[24]	valid_0's auc: 0.531237
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[25]	valid_0's auc: 0.531603
+  denoise eps=0.0005            : es=0.5328 te=0.5359 q99=59.8%@16.7t q99.5=60.2%@8.4t (169s)
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[109]	valid_0's auc: 0.534829
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[6]	valid_0's auc: 0.532339
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[247]	valid_0's auc: 0.532451
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[44]	valid_0's auc: 0.533017
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[34]	valid_0's auc: 0.532304
+  denoise+negw0.3               : es=0.5337 te=0.5366 q99=59.5%@16.7t q99.5=61.5%@8.4t (203s)
+
+=== S4: BTC HP Search h15 ===
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[68]	valid_0's auc: 0.532349
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[142]	valid_0's auc: 0.532702
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[36]	valid_0's auc: 0.532557
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[59]	valid_0's auc: 0.532069
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[90]	valid_0's auc: 0.53318
+  baseline            : es=0.5329 te=0.5373 (243s)
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[138]	valid_0's auc: 0.532333
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[314]	valid_0's auc: 0.533536
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[70]	valid_0's auc: 0.533284
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[64]	valid_0's auc: 0.53244
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[84]	valid_0's auc: 0.533306
+  nl31                : es=0.5333 te=0.5368 (254s)
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[173]	valid_0's auc: 0.533788
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[52]	valid_0's auc: 0.533268
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[40]	valid_0's auc: 0.534104
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[59]	valid_0's auc: 0.532979
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[69]	valid_0's auc: 0.533567
+  nl127               : es=0.5342 te=0.5371 (281s)
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[61]	valid_0's auc: 0.533011
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[39]	valid_0's auc: 0.533022
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[53]	valid_0's auc: 0.533625
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[66]	valid_0's auc: 0.53253
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[55]	valid_0's auc: 0.533117
+  nl255               : es=0.5338 te=0.5369 (284s)
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[68]	valid_0's auc: 0.532349
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[142]	valid_0's auc: 0.532702
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[36]	valid_0's auc: 0.532557
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[59]	valid_0's auc: 0.532069
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[90]	valid_0's auc: 0.53318
+  d50                 : es=0.5329 te=0.5373 (243s)
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[68]	valid_0's auc: 0.532349
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[142]	valid_0's auc: 0.532702
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[36]	valid_0's auc: 0.532557
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[59]	valid_0's auc: 0.532069
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[90]	valid_0's auc: 0.53318
+  d100                : es=0.5329 te=0.5373 (243s)
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[58]	valid_0's auc: 0.53334
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[139]	valid_0's auc: 0.533398
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[73]	valid_0's auc: 0.5332
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[83]	valid_0's auc: 0.532892
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[287]	valid_0's auc: 0.532934
+  lr0.03              : es=0.5335 te=0.5368 (307s)
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[158]	valid_0's auc: 0.533939
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[37]	valid_0's auc: 0.533591
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[52]	valid_0's auc: 0.534641
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[39]	valid_0's auc: 0.533055
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[73]	valid_0's auc: 0.533499
+  lr0.1               : es=0.5347 te=0.5368 (202s)
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[85]	valid_0's auc: 0.532929
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[142]	valid_0's auc: 0.533787
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[71]	valid_0's auc: 0.532519
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[69]	valid_0's auc: 0.532579
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[90]	valid_0's auc: 0.533326
+  ff0.6               : es=0.5334 te=0.5368 (238s)
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[100]	valid_0's auc: 0.532608
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[89]	valid_0's auc: 0.532578
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[148]	valid_0's auc: 0.532721
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[29]	valid_0's auc: 0.532332
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[49]	valid_0's auc: 0.532718
+  ff1.0               : es=0.5330 te=0.5367 (237s)
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[101]	valid_0's auc: 0.533057
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[232]	valid_0's auc: 0.533736
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[141]	valid_0's auc: 0.53244
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[75]	valid_0's auc: 0.53327
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[77]	valid_0's auc: 0.532507
+  ff0.9               : es=0.5334 te=0.5370 (279s)
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[167]	valid_0's auc: 0.533004
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[107]	valid_0's auc: 0.533525
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[105]	valid_0's auc: 0.533628
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[154]	valid_0's auc: 0.533147
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[133]	valid_0's auc: 0.533008
+  nl127d100l0.03      : es=0.5336 te=0.5371 (359s)
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[167]	valid_0's auc: 0.533004
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[107]	valid_0's auc: 0.533525
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[105]	valid_0's auc: 0.533628
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[154]	valid_0's auc: 0.533147
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[133]	valid_0's auc: 0.533008
+  nl127d50l0.03       : es=0.5336 te=0.5371 (382s)
+
+=== S5: BTC Multi-H Conf Combine ===
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[317]	valid_0's auc: 0.53259
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[180]	valid_0's auc: 0.531978
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[293]	valid_0's auc: 0.532412
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[400]	valid_0's auc: 0.53218
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[152]	valid_0's auc: 0.530889
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[163]	valid_0's auc: 0.532855
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[67]	valid_0's auc: 0.531796
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[158]	valid_0's auc: 0.531703
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[124]	valid_0's auc: 0.531601
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[117]	valid_0's auc: 0.531351
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[68]	valid_0's auc: 0.532349
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[142]	valid_0's auc: 0.532702
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[36]	valid_0's auc: 0.532557
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[59]	valid_0's auc: 0.532069
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[90]	valid_0's auc: 0.53318
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[194]	valid_0's auc: 0.535496
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[166]	valid_0's auc: 0.53602
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[50]	valid_0's auc: 0.535096
+Training until validation scores don't improve for 100 rounds

@@ -1,0 +1,138 @@
+=== S1: BTC Horizon Scan (5 seeds) ===
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[317]	valid_0's auc: 0.53259
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[180]	valid_0's auc: 0.531978
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[293]	valid_0's auc: 0.532412
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[400]	valid_0's auc: 0.53218
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[152]	valid_0's auc: 0.530889
+BTC h 5: es=0.5327 te=0.5343 q99=59.9%@16.7t
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[163]	valid_0's auc: 0.532855
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[67]	valid_0's auc: 0.531796
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[158]	valid_0's auc: 0.531703
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[124]	valid_0's auc: 0.531601
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[117]	valid_0's auc: 0.531351
+BTC h10: es=0.5323 te=0.5352 q99=58.0%@16.7t
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[68]	valid_0's auc: 0.532349
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[142]	valid_0's auc: 0.532702
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[36]	valid_0's auc: 0.532557
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[59]	valid_0's auc: 0.532069
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[90]	valid_0's auc: 0.53318
+BTC h15: es=0.5329 te=0.5373 q99=60.5%@16.7t
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[194]	valid_0's auc: 0.535496
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[166]	valid_0's auc: 0.53602
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[50]	valid_0's auc: 0.535096
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[309]	valid_0's auc: 0.538908
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[159]	valid_0's auc: 0.535447
+BTC h20: es=0.5372 te=0.5376 q99=60.5%@16.7t
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[169]	valid_0's auc: 0.533312
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[111]	valid_0's auc: 0.532132
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[80]	valid_0's auc: 0.533821
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[63]	valid_0's auc: 0.53312
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[59]	valid_0's auc: 0.532154
+BTC h30: es=0.5334 te=0.5362 q99=62.8%@16.7t
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[9]	valid_0's auc: 0.54062
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[130]	valid_0's auc: 0.538807
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[23]	valid_0's auc: 0.538578
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[20]	valid_0's auc: 0.538157
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[20]	valid_0's auc: 0.538887
+BTC h60: es=0.5398 te=0.5366 q99=61.6%@16.7t
+>>> BTC BEST: h=20 te=0.5376
+--- ETH refs ---
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[7]	valid_0's auc: 0.535092
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[84]	valid_0's auc: 0.534302
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[75]	valid_0's auc: 0.53508
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[49]	valid_0's auc: 0.534662
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[18]	valid_0's auc: 0.533924
+ETH h15: es=0.5350 te=0.5431 q99=61.8%@16.7t
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[6]	valid_0's auc: 0.531433
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[42]	valid_0's auc: 0.531116
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[24]	valid_0's auc: 0.529501
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[93]	valid_0's auc: 0.530343
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[73]	valid_0's auc: 0.531029
+ETH h30: es=0.5310 te=0.5437 q99=58.1%@16.7t
+
+=== S2: BTC vs ETH h15 Diagnosis ===
+BTC |ret|: mean=0.118% p90=0.268%
+ETH |ret|: mean=0.155% p90=0.350%
+Traceback (most recent call last):
+  File "<stdin>", line 85, in <module>
+IndexError: boolean index did not match indexed array along axis 0; size of axis is 480946 but size of corresponding boolean axis is 85906
