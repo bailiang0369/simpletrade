@@ -414,3 +414,59 @@ Training until validation scores don't improve for 100 rounds
 Early stopping, best iteration is:
 [50]	valid_0's auc: 0.535096
 Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[309]	valid_0's auc: 0.538908
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[159]	valid_0's auc: 0.535447
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[169]	valid_0's auc: 0.533312
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[111]	valid_0's auc: 0.532132
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[80]	valid_0's auc: 0.533821
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[63]	valid_0's auc: 0.53312
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[59]	valid_0's auc: 0.532154
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[9]	valid_0's auc: 0.54062
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[130]	valid_0's auc: 0.538807
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[23]	valid_0's auc: 0.538578
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[20]	valid_0's auc: 0.538157
+Training until validation scores don't improve for 100 rounds
+Early stopping, best iteration is:
+[20]	valid_0's auc: 0.538887
+Single:
+  BTC h 5: te=0.5342
+  BTC h10: te=0.5365
+  BTC h15: te=0.5373
+  BTC h20: te=0.5370
+  BTC h30: te=0.5359
+  BTC h60: te=0.5335
+Pairs:
+  h10+h20: te=0.5376
+  h15+h20: te=0.5376
+  h15+h30: te=0.5370
+  h5+h15: te=0.5372
+  h10+h30: te=0.5370
+Weighted h15+h30, h20+h30:
+  0.7*h15+0.3*h30: te=0.5372
+  0.6*h15+0.4*h30: te=0.5371
+  0.5*h15+0.5*h30: te=0.5370
+  0.6*h20+0.4*h30: te=0.5370
+  0.5*h20+0.5*h30: te=0.5369
+
+TOTAL: 7548s
