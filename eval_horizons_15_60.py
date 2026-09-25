@@ -1,8 +1,10 @@
-"""Real-Time Multi-Timeframe Model Horizon Comparison (H=15m vs H=30m vs H=60m)
+"""Real-Time Multi-Timeframe Model Horizon Comparison (H=5m, H=10m, H=15m, H=30m, H=60m)
 
 测试与评估说明:
 保持相同的全实时 1min Tick 多周期特征引擎 (5m, 15m, 30m, 60m, 120m, 240m 滑动窗口)，
 对比模型在不同未来预测目标下的准确率:
+  - H = 5m  (预测未来 5 分钟涨跌)
+  - H = 10m (预测未来 10 分钟涨跌)
   - H = 15m (预测未来 15 分钟涨跌)
   - H = 30m (预测未来 30 分钟涨跌)
   - H = 60m (预测未来 60 分钟涨跌)
@@ -86,22 +88,22 @@ def eval_horizon_realtime(symbol='ETH', horizon=15):
 
 def main():
     print("=================================================================", flush=True)
-    print("  全实时多周期模型预测目标对比: H=15m vs H=30m vs H=60m", flush=True)
+    print("  全实时多周期模型预测目标全对比: H=5m vs H=10m vs H=15m vs H=30m vs H=60m", flush=True)
     print("=================================================================\n", flush=True)
 
     results = []
     for sym in ['ETH', 'BTC']:
-        for h in [15, 30, 60]:
+        for h in [5, 10, 15, 30, 60]:
             print(f"正在评估 {sym} 未来 H={h} 分钟涨跌预测...", flush=True)
             res = eval_horizon_realtime(sym, h)
             results.append(res)
             print(f"  --> {sym} H={h}m | AUC: {res['auc']:.4f} | Top1%准确率: {res['acc']*100:.2f}% | 月均: {res['m_mean']*100:.2f}% | 最低月: {res['min_a']*100:.1f}% | 坏月: {res['bad_m']}个", flush=True)
 
-    print("\n" + "=" * 70, flush=True)
-    print("  【不同预测 Horizon (15m vs 30m vs 60m) 汇总对比表】", flush=True)
-    print("=" * 70, flush=True)
+    print("\n" + "=" * 80, flush=True)
+    print("  【不同预测 Horizon (5m vs 10m vs 15m vs 30m vs 60m) 汇总对比表】", flush=True)
+    print("=" * 80, flush=True)
     for r in results:
-        print(f"[{r['symbol']} 未来{r['horizon']}m涨跌] -> Test AUC: {r['auc']:.4f} | Top1%准确率: {r['acc']*100:.2f}% | 月均: {r['m_mean']*100:.2f}% | 最低月: {r['min_a']*100:.1f}% | 坏月: {r['bad_m']}个")
+        print(f"[{r['symbol']} 未来{r['horizon']:2d}m涨跌] -> Test AUC: {r['auc']:.4f} | Top1%准确率: {r['acc']*100:.2f}% | 月均: {r['m_mean']*100:.2f}% | 最低月: {r['min_a']*100:.1f}% | 坏月: {r['bad_m']}个")
 
 if __name__ == "__main__":
     main()
