@@ -157,18 +157,22 @@ class PatternResNet(nn.Module):
         return torch.clamp(probs, 1e-7, 1.0 - 1e-7)
 
 # ========== 3. Dataset 与评估 ==========
-class PatternDataset(Dataset):
-    def __init__(self, feats, labels, valid_indices, lookback=30):
-        grid = valid_indices[:, None] - np.arange(lookback - 1, -1, -1)
-        X_mat = feats[grid].astype(np.float32)
-        self.X = torch.from_numpy(X_mat)
-        self.Y = torch.from_numpy(labels[valid_indices]).float()
+from numpy.lib.stride_tricks import sliding_window_view
+
+class FastPatternDataset(Dataset):
+    def __init__(self, window_view, labels, valid_indices, lookback=60):
+        # window_view has shape (N - lookback + 1, lookback, num_feats)
+        # map valid_indices to window_view row indices
+        self.window_indices = valid_indices - (lookback - 1)
+        self.window_view = window_view
+        self.labels = labels[valid_indices]
 
     def __len__(self):
-        return len(self.Y)
+        return len(self.window_indices)
 
     def __getitem__(self, idx):
-        return self.X[idx], self.Y[idx]
+        w_idx = self.window_indices[idx]
+        return torch.from_numpy(self.window_view[w_idx]), torch.tensor(self.labels[idx], dtype=torch.float32)
 
 def eval_r2_daily(p, y, ts_arr):
     n = len(p)
@@ -196,7 +200,7 @@ def eval_r2_daily(p, y, ts_arr):
     return overall_acc, min_a, bad_m, tpd, acc_m
 
 def main():
-    LOOKBACK = 30
+    LOOKBACK = 60
     HORIZON = 30
     BATCH_SIZE = 2048
     EPOCHS = 3
@@ -252,16 +256,19 @@ def main():
     te_idx_e = np.where(te_m & valid_e)[0]  # 全量 1min K 线, 恢复每日 14.4 笔交易频率
 
     # ========== 1. 训练 Pattern ResNet CNN (多 Seed Bagging) ==========
-    print("\n[Pattern v2 1/3] 训练 3-Seed Bagged Pattern ResNet CNN (以太坊)...", flush=True)
-    tr_ds_e = PatternDataset(feats_eth, label_eth, tr_idx_e, lookback=LOOKBACK)
-    es_ds_e = PatternDataset(feats_eth, label_eth, es_idx_e, lookback=LOOKBACK)
-    mv_ds_e = PatternDataset(feats_eth, label_eth, mv_idx_e, lookback=LOOKBACK)
-    te_ds_e = PatternDataset(feats_eth, label_eth, te_idx_e, lookback=LOOKBACK)
+    print("\n[Pattern v2 1/3] 构建 zero-copy 3D K线滑动窗口视图...", flush=True)
+    sw_eth = sliding_window_view(feats_eth, window_shape=LOOKBACK, axis=0).transpose(0, 2, 1)
 
-    tr_loader = DataLoader(tr_ds_e, batch_size=BATCH_SIZE, shuffle=True)
-    es_loader = DataLoader(es_ds_e, batch_size=BATCH_SIZE, shuffle=False)
-    mv_loader = DataLoader(mv_ds_e, batch_size=BATCH_SIZE, shuffle=False)
-    te_loader = DataLoader(te_ds_e, batch_size=BATCH_SIZE, shuffle=False)
+    print("\n[Pattern v2 1/3] 训练 3-Seed Bagged Pattern ResNet CNN (以太坊)...", flush=True)
+    tr_ds_e = FastPatternDataset(sw_eth, label_eth, tr_idx_e, lookback=LOOKBACK)
+    es_ds_e = FastPatternDataset(sw_eth, label_eth, es_idx_e, lookback=LOOKBACK)
+    mv_ds_e = FastPatternDataset(sw_eth, label_eth, mv_idx_e, lookback=LOOKBACK)
+    te_ds_e = FastPatternDataset(sw_eth, label_eth, te_idx_e, lookback=LOOKBACK)
+
+    tr_loader = DataLoader(tr_ds_e, batch_size=BATCH_SIZE, shuffle=True, num_workers=0)
+    es_loader = DataLoader(es_ds_e, batch_size=BATCH_SIZE, shuffle=False, num_workers=0)
+    mv_loader = DataLoader(mv_ds_e, batch_size=BATCH_SIZE, shuffle=False, num_workers=0)
+    te_loader = DataLoader(te_ds_e, batch_size=BATCH_SIZE, shuffle=False, num_workers=0)
 
     in_ch = feats_eth.shape[1]
     all_cnn_mv, all_cnn_te = [], []
@@ -276,6 +283,7 @@ def main():
         best_es_auc = 0.0
 
         for ep in range(1, EPOCHS + 1):
+            t_ep = time.time()
             model.train()
             tot_loss = 0
             for bx, by in tr_loader:
@@ -287,17 +295,17 @@ def main():
                 opt.step()
                 tot_loss += loss.item() * len(bx)
 
-            if ep == EPOCHS:
-                model.eval()
-                es_preds = []
-                with torch.no_grad():
-                    for bx, _ in es_loader:
-                        p = model(bx.to(DEVICE)).cpu().numpy()
-                        es_preds.append(p)
-                es_auc = roc_auc_score(label_eth[es_idx_e], np.concatenate(es_preds))
-                if es_auc > best_es_auc:
-                    best_es_auc = es_auc
-                    torch.save(model.state_dict(), best_path)
+            model.eval()
+            es_preds = []
+            with torch.no_grad():
+                for bx, _ in es_loader:
+                    p = model(bx.to(DEVICE)).cpu().numpy()
+                    es_preds.append(p)
+            es_auc = roc_auc_score(label_eth[es_idx_e], np.concatenate(es_preds))
+            print(f"  Epoch {ep}/{EPOCHS} [{time.time() - t_ep:.1f}s] Loss: {tot_loss/len(tr_ds_e):.4f} | ES AUC: {es_auc:.4f}", flush=True)
+            if es_auc > best_es_auc:
+                best_es_auc = es_auc
+                torch.save(model.state_dict(), best_path)
 
         model.load_state_dict(torch.load(best_path))
         model.eval()
