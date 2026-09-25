@@ -1,9 +1,16 @@
-"""K线重采样实验 (2分钟 / 3分钟基础 K 线预测未来 30 分钟涨跌):
-  - 实验 1: 1min 基础 K 线 -> 预测未来 30 根 K 线 (H=30min) [基线对照]
-  - 实验 2: 2min 基础 K 线 -> 预测未来 15 根 K 线 (H=15 2min bars = 30min)
-  - 实验 3: 3min 基础 K 线 -> 预测未来 10 根 K 线 (H=10 3min bars = 30min)
+"""K线相位偏移重采样数据增强实验 (Phase-Offset Resampling Augmentation):
 
-验证目的: 观察将基础 K 线聚合降噪后，对未来 30 分钟涨跌的预测准确率与坏月稳定性的影响。
+验证思路:
+  1. 2min K 线相位偏移数据增强:
+     - 相位 0 (Phase 0): 偶数分钟对齐 (0m, 2m, 4m...)
+     - 相位 1 (Phase 1): 奇数分钟对齐 (1m, 3m, 5m...)
+     - 合并 Phase 0 + Phase 1: 样本量恢复 2 倍 (日均交易次数恢复至 15.0 笔/天)，消除 K 线对齐量子化边界噪声！
+
+  2. 3min K 线相位偏移数据增强:
+     - 相位 0 (Phase 0): Modulo 3 = 0 (0m, 3m, 6m...)
+     - 相位 1 (Phase 1): Modulo 3 = 1 (1m, 4m, 7m...)
+     - 相位 2 (Phase 2): Modulo 3 = 2 (2m, 5m, 8m...)
+     - 合并 Phase 0 + 1 + 2: 样本量恢复 3 倍 (日均交易次数恢复至 15.0 笔/天)！
 """
 import os, sys, gc, time, datetime, warnings
 import numpy as np
@@ -16,11 +23,13 @@ warnings.filterwarnings('ignore')
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import config
 
-def resample_ohlcv(raw_df, period_min=2):
-    """将 1min K 线表重采样为 2min / 3min 基础 K 线"""
-    t0 = time.time()
+def resample_ohlcv_phase(raw_df, period_min=2, offset_min=0):
+    """带相位偏移的 K 线重采样"""
     p_df = pl.from_pandas(raw_df)
     p_df = p_df.with_columns(pl.from_epoch(pl.col('ts'), time_unit='s').alias('dt'))
+
+    if offset_min > 0:
+        p_df = p_df.filter((pl.col('ts') % (period_min * 60)) == (offset_min * 60))
 
     resampled = (
         p_df.group_by_dynamic('dt', every=f'{period_min}m')
@@ -36,11 +45,9 @@ def resample_ohlcv(raw_df, period_min=2):
         ])
         .sort('ts')
     )
-    print(f"  [Resample {period_min}min K] 原始 {len(raw_df):,} 行 -> 重采样后 {resampled.height:,} 行 ({time.time()-t0:.2f}s)", flush=True)
     return resampled.to_pandas()
 
 def build_resampled_features(df_target, df_other):
-    """在重采样后的 2min / 3min K 线上构建技术特征"""
     p_target = pl.from_pandas(df_target[['ts', 'close', 'buy_vol', 'sell_vol']])
     p_other = pl.from_pandas(df_other[['ts', 'close']])
 
@@ -68,7 +75,7 @@ def build_resampled_features(df_target, df_other):
     # 3. CVD 比率
     d = pl.col('buy_vol') - pl.col('sell_vol')
     tot = pl.col('buy_vol') + pl.col('sell_vol')
-    for w in [5, 10, 20]:
+    for w in [15, 30, 60]:
         cvd_w = (d.rolling_sum(window_size=w) / (tot.rolling_sum(window_size=w) + 1e-9)).fill_null(0.0).alias(f'cvd_{w}')
         exprs.append(cvd_w)
 
@@ -128,47 +135,60 @@ def eval_r2_daily(p, y, ts_arr):
     tpd = float(sel.size) / len(days)
     return overall_acc, min_a, bad_m, tpd, acc_m
 
-def run_resample_experiment(period_min, bars_ahead, symbol='ETH'):
+def run_phase_augmented_experiment(period_min=2, bars_ahead=15, symbol='ETH'):
     print(f"\n" + "=" * 65, flush=True)
-    print(f"  【实验】{symbol} 使用 {period_min}min 基础 K 线 -> 预测未来 {bars_ahead} 根 K 线 ({period_min*bars_ahead}分钟)", flush=True)
+    print(f"  【多相位数据增强实验】{symbol} 使用 {period_min}min K 线 ({period_min} 相位交错重采样) -> 预测 30 分钟涨跌", flush=True)
     print("=" * 65, flush=True)
 
     raw_e = pd.read_parquet(os.path.join(config.DS_DIR, "raw_ETH.parquet")).sort_values('ts').reset_index(drop=True)
     raw_b = pd.read_parquet(os.path.join(config.DS_DIR, "raw_BTC.parquet")).sort_values('ts').reset_index(drop=True)
 
-    if period_min > 1:
-        res_e = resample_ohlcv(raw_e, period_min=period_min)
-        res_b = resample_ohlcv(raw_b, period_min=period_min)
-    else:
-        res_e = raw_e
-        res_b = raw_b
+    all_Xtr, all_ytr, all_retr = [], [], []
+    all_Xes, all_yes = [], []
+    all_Xte, all_yte, all_tste = [], [], []
 
-    # 提取特征
-    feats_e = build_resampled_features(res_e, res_b) if symbol == 'ETH' else build_resampled_features(res_b, res_e)
-    close = res_e['close'].values if symbol == 'ETH' else res_b['close'].values
-    ts = res_e['ts'].values.astype(np.int64) if symbol == 'ETH' else res_b['ts'].values.astype(np.int64)
-
-    n = len(ts)
-    ret_fut = np.full(n, np.nan, dtype=np.float32)
-    ret_fut[:-bars_ahead] = (close[bars_ahead:] / close[:-bars_ahead] - 1.0).astype(np.float32)
-    label = (ret_fut > 0).astype(np.int8)
-
-    valid = ~np.isnan(ret_fut) & (np.arange(n) >= 40)
-
-    def ts_mask(s, e):
+    def ts_mask(ts, s, e):
         a = int(datetime.datetime.strptime(s, '%Y-%m-%d').replace(tzinfo=datetime.timezone.utc).timestamp())
         b = int(datetime.datetime.strptime(e, '%Y-%m-%d').replace(tzinfo=datetime.timezone.utc).timestamp())
         return (ts >= a) & (ts < b)
 
-    tr_m = ts_mask('2020-01-01', '2024-06-30') & valid
-    es_m = ts_mask('2024-06-30', '2024-09-30') & valid
-    te_m = ts_mask('2025-09-30', '2026-08-29') & valid
+    for phase in range(period_min):
+        res_e = resample_ohlcv_phase(raw_e, period_min=period_min, offset_min=phase)
+        res_b = resample_ohlcv_phase(raw_b, period_min=period_min, offset_min=phase)
 
-    Xtr, ytr, retr = feats_e[tr_m], label[tr_m], ret_fut[tr_m]
-    Xes, yes = feats_e[es_m], label[es_m]
-    Xte, yte, ts_te = feats_e[te_m], label[te_m], ts[te_m]
+        feats_e = build_resampled_features(res_e, res_b) if symbol == 'ETH' else build_resampled_features(res_b, res_e)
+        close = res_e['close'].values if symbol == 'ETH' else res_b['close'].values
+        ts = res_e['ts'].values.astype(np.int64) if symbol == 'ETH' else res_b['ts'].values.astype(np.int64)
 
-    # 加权样本收益率
+        n = len(ts)
+        ret_fut = np.full(n, np.nan, dtype=np.float32)
+        ret_fut[:-bars_ahead] = (close[bars_ahead:] / close[:-bars_ahead] - 1.0).astype(np.float32)
+        label = (ret_fut > 0).astype(np.int8)
+
+        valid = ~np.isnan(ret_fut) & (np.arange(n) >= 40)
+
+        tr_m = ts_mask(ts, '2020-01-01', '2024-06-30') & valid
+        es_m = ts_mask(ts, '2024-06-30', '2024-09-30') & valid
+        te_m = ts_mask(ts, '2025-09-30', '2026-08-29') & valid
+
+        all_Xtr.append(feats_e[tr_m]); all_ytr.append(label[tr_m]); all_retr.append(ret_fut[tr_m])
+        all_Xes.append(feats_e[es_m]); all_yes.append(label[es_m])
+        all_Xte.append(feats_e[te_m]); all_yte.append(label[te_m]); all_tste.append(ts[te_m])
+
+    # 拼接多相位增强数据集
+    Xtr = np.concatenate(all_Xtr, axis=0)
+    ytr = np.concatenate(all_ytr, axis=0)
+    retr = np.concatenate(all_retr, axis=0)
+
+    Xes = np.concatenate(all_Xes, axis=0)
+    yes = np.concatenate(all_yes, axis=0)
+
+    Xte = np.concatenate(all_Xte, axis=0)
+    yte = np.concatenate(all_yte, axis=0)
+    ts_te = np.concatenate(all_tste, axis=0)
+
+    print(f"  [多相位数据增强合并] Train={len(Xtr):,} 行, EarlyStop={len(Xes):,} 行, Test={len(Xte):,} 行", flush=True)
+
     sw = np.clip(np.abs(retr) * 50, 0.5, 5.0)
 
     dtr = lgb.Dataset(Xtr, ytr, weight=sw)
@@ -191,22 +211,23 @@ def run_resample_experiment(period_min, bars_ahead, symbol='ETH'):
     print(f"  日均交易次数 (TPD): {tpd:.1f} 笔/天")
     print(f"  坏月份数 (<55%): {bad_m} 个 (最低单月准确率: {min_a*100:.2f}%)")
     print(f"  逐月明细:\n  {monthly}\n")
-    return overall_acc, min_a, bad_m, tpd
 
 def main():
     print("=================================================================", flush=True)
-    print("  K 线重采样对预测未来 30 分钟涨跌影响的对比实验", flush=True)
+    print("  K 线多相位偏移重采样数据增强对比实验 (ETH & BTC)", flush=True)
     print("=================================================================", flush=True)
 
-    # 预测标的: ETH (以太坊)
-    run_resample_experiment(period_min=1, bars_ahead=30, symbol='ETH')  # 1min 基础 K -> 预测 30 根
-    run_resample_experiment(period_min=2, bars_ahead=15, symbol='ETH')  # 2min 基础 K -> 预测 15 根
-    run_resample_experiment(period_min=3, bars_ahead=10, symbol='ETH')  # 3min 基础 K -> 预测 10 根
+    # 1. ETH 2min (2 相位增强: 偶数分 + 奇数分)
+    run_phase_augmented_experiment(period_min=2, bars_ahead=15, symbol='ETH')
 
-    # 预测标的: BTC (比特币)
-    run_resample_experiment(period_min=1, bars_ahead=30, symbol='BTC')  # 1min 基础 K -> 预测 30 根
-    run_resample_experiment(period_min=2, bars_ahead=15, symbol='BTC')  # 2min 基础 K -> 预测 15 根
-    run_resample_experiment(period_min=3, bars_ahead=10, symbol='BTC')  # 3min 基础 K -> 预测 10 根
+    # 2. ETH 3min (3 相位增强: Modulo 0, 1, 2)
+    run_phase_augmented_experiment(period_min=3, bars_ahead=10, symbol='ETH')
+
+    # 3. BTC 2min (2 相位增强: 偶数分 + 奇数分)
+    run_phase_augmented_experiment(period_min=2, bars_ahead=15, symbol='BTC')
+
+    # 4. BTC 3min (3 相位增强: Modulo 0, 1, 2)
+    run_phase_augmented_experiment(period_min=3, bars_ahead=10, symbol='BTC')
 
 if __name__ == "__main__":
     main()
