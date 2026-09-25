@@ -246,10 +246,10 @@ def main():
     mv_m = ts_mask('2024-09-30', '2025-09-30')
     te_m = ts_mask('2025-09-30', '2026-08-29')
 
-    tr_idx_e = np.where(tr_m & valid_e)[0][::20]
-    es_idx_e = np.where(es_m & valid_e)[0][::20]
-    mv_idx_e = np.where(mv_m & valid_e)[0][::20]
-    te_idx_e = np.where(te_m & valid_e)[0][::20]
+    tr_idx_e = np.where(tr_m & valid_e)[0][::5]
+    es_idx_e = np.where(es_m & valid_e)[0]
+    mv_idx_e = np.where(mv_m & valid_e)[0]
+    te_idx_e = np.where(te_m & valid_e)[0]  # 全量 1min K 线, 恢复每日 14.4 笔交易频率
 
     # ========== 1. 训练 Pattern ResNet CNN (多 Seed Bagging) ==========
     print("\n[Pattern v2 1/3] 训练 3-Seed Bagged Pattern ResNet CNN (以太坊)...", flush=True)
