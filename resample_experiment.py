@@ -24,15 +24,12 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import config
 
 def resample_ohlcv_phase(raw_df, period_min=2, offset_min=0):
-    """带相位偏移的 K 线重采样"""
+    """带相位偏移的 K 线全量重采样 (通过 Polars offset 移动时间窗口边界，无泄漏且完整聚合所有 1min OHLCV 与买卖量)"""
     p_df = pl.from_pandas(raw_df)
     p_df = p_df.with_columns(pl.from_epoch(pl.col('ts'), time_unit='s').alias('dt'))
 
-    if offset_min > 0:
-        p_df = p_df.filter((pl.col('ts') % (period_min * 60)) == (offset_min * 60))
-
     resampled = (
-        p_df.group_by_dynamic('dt', every=f'{period_min}m')
+        p_df.group_by_dynamic('dt', every=f'{period_min}m', offset=f'{offset_min}m')
         .agg([
             pl.col('ts').first().alias('ts'),
             pl.col('open').first().alias('open'),
