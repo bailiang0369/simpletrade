@@ -29,3 +29,11 @@ catboost_info/
 Thumbs.dbmh_experiments/union_datasets.pkl
 mh_experiments/union_all_results.json
 mh_experiments/*.pkl
+
+# 临时实验脚本 (_开头, 一次性试验)
+_*.py
+
+# 实验输出日志/文件 (保留历史 txt 结果)
+*.txt
+btc_*.txt
+log_*.txt

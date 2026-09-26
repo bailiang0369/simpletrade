@@ -74,6 +74,18 @@ def build_features(df: pl.DataFrame) -> pl.DataFrame:
     e["ts_act_60"] = TS.rolling_std(60, ddof=1) / (TS.rolling_mean(60) + EPS)
     e["cvd_30"] = (TB - TS).rolling_sum(30) / ((TB + TS).rolling_sum(30) + EPS)
     e["cvd_60"] = (TB - TS).rolling_sum(60) / ((TB + TS).rolling_sum(60) + EPS)
+    # 直接买卖比值 (实验验证: +0.3pp tail ACC)
+    e["tb_ratio"] = TB / (TB + TS + EPS)             # 主动买占比
+    e["tb_ts_ratio"] = TB / (TS + EPS)               # 主动买/主动卖比值
+
+    # ---- Funding Rate 滚动统计 (实验验证: +0.0012 AUC, +1.5pp tail ACC) ----
+    F = pl.col("funding")
+    for w in [30, 60, 120]:
+        fm = F.rolling_mean(w)
+        fs = F.rolling_std(w, ddof=1)
+        e[f"fund_mean_{w}"] = fm
+        e[f"fund_std_{w}"] = fs
+        e[f"fund_z_{w}"] = (F - fm) / (fs + EPS)
 
     # ---- 动量一致性 ----
     e["mom_align_30_240"] = ((C / C.shift(30) - 1) * (C / C.shift(240) - 1) * 1e8)

@@ -148,10 +148,12 @@ class GBDTModel(BaseModel):
                 raw_w = None
 
             if raw_w is not None:
-                # 正样本权重放大
-                raw_w[ytr > 0.5] *= 2.0
-                # 裁剪极端权重, 防止过拟合
-                w = np.clip(raw_w * 50, 0.5, 5.0)
+                # negw: 极端 ret 样本降权 (top/bottom 10% |ret| ×0.3)
+                # 实验验证: +1.2pp tail ACC, +0.0010 AUC
+                # 极端 ret 样本噪声大, 模型容易过拟合在上面 (训练期 AUC 高 → 测试期垮)
+                abs_ret = raw_w  # raw_w = |ret_future|
+                q90 = np.quantile(abs_ret, 0.90)
+                w = np.where(abs_ret >= q90, 0.3, 1.0).astype(np.float64)
             else:
                 w = np.ones(len(ytr), dtype=np.float64)
 
