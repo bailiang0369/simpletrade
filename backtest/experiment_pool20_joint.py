@@ -21,7 +21,7 @@ from validate_eth_quick import (FEATURES, EXTRA_FEATURE_NAMES, BAGGED_SEEDS,
                                 compute_extra_raw, get_X)
 
 MAX_TRAIN = 2_600_000
-MODEL_ROOT = "/workspace/models_saved/pool20_joint"
+MODEL_ROOT = os.path.join(config.PROJECT_DIR, "models_saved", "pool20_joint")
 os.makedirs(MODEL_ROOT, exist_ok=True)
 SYMBOLS = ["ETH", "BTC"]
 
@@ -65,6 +65,24 @@ def train_family(family):
     del Xes_list, yes_list; gc.collect()
     bis = []
     for seed in BAGGED_SEEDS:
+        ext = ".txt" if family == "lgb" else ".json" if family == "xgb" else ".cbm"
+        model_file = f"{MODEL_ROOT}/JOINT_{family}_seed{seed}{ext}"
+        if os.path.exists(model_file):
+            print(f"  [JOINT {family}] seed{seed} 已存在, 跳过训练", flush=True)
+            if family == "lgb":
+                import lightgbm as lgb
+                mm = lgb.Booster(model_file=model_file)
+                bis.append(getattr(mm, 'best_iteration', 0))
+            elif family == "xgb":
+                import xgboost as xgb
+                mm = xgb.Booster(); mm.load_model(model_file)
+                bis.append(getattr(mm, 'best_iteration', getattr(mm, 'best_ntree_limit', 0)))
+            else:
+                from catboost import CatBoostClassifier
+                mm = CatBoostClassifier(); mm.load_model(model_file)
+                bis.append(getattr(mm, 'best_iteration_', 0))
+            continue
+
         mws = joint_masks_weights(ctxs, seed)
         Xtr_list = [get_X(ctxs[s], extras[s], mws[s][0]) for s in SYMBOLS]
         ytr_list = [ctxs[s].label[mws[s][0]].astype(np.float64) for s in SYMBOLS]
@@ -83,7 +101,7 @@ def train_family(family):
                           feval=_topk_acc_eval,
                           callbacks=[lgb.early_stopping(200, verbose=False, min_delta=1e-5),
                                      lgb.log_evaluation(0)])
-            m.save_model(f"{MODEL_ROOT}/JOINT_{family}_seed{seed}.txt")
+            m.save_model(model_file)
             bis.append(m.best_iteration)
         elif family == "xgb":
             import xgboost as xgb
@@ -95,7 +113,7 @@ def train_family(family):
                      seed=seed)
             m = xgb.train(p, dtr, num_boost_round=5000, evals=[(des, "es")],
                           early_stopping_rounds=200, verbose_eval=False)
-            m.save_model(f"{MODEL_ROOT}/JOINT_{family}_seed{seed}.json")
+            m.save_model(model_file)
             bis.append(m.best_iteration)
         else:
             from catboost import CatBoostClassifier, Pool
@@ -106,7 +124,7 @@ def train_family(family):
                                    verbose=False, early_stopping_rounds=200, loss_function="Logloss",
                                    allow_writing_files=False)
             m.fit(tr_pool, eval_set=eval_pool, verbose_eval=False)
-            m.save_model(f"{MODEL_ROOT}/JOINT_{family}_seed{seed}.cbm")
+            m.save_model(model_file)
             bis.append(m.best_iteration_)
         print(f"  [JOINT {family}] seed{seed} iter={bis[-1]} ({time.time()-t0:.0f}s)", flush=True)
         del Xtr, ytr, w; gc.collect()
@@ -124,11 +142,11 @@ def train_family(family):
                 if family == "lgb":
                     import lightgbm as lgb
                     mm = lgb.Booster(model_file=f"{MODEL_ROOT}/JOINT_{family}_seed{seed}.txt")
-                    P[i] = mm.predict(X, num_iteration=bi)
+                    P[i] = mm.predict(X, num_iteration=bi if bi > 0 else None)
                 elif family == "xgb":
                     import xgboost as xgb
                     mm = xgb.Booster(); mm.load_model(f"{MODEL_ROOT}/JOINT_{family}_seed{seed}.json")
-                    P[i] = mm.predict(xgb.DMatrix(X), iteration_range=(0, bi))
+                    P[i] = mm.predict(xgb.DMatrix(X), iteration_range=(0, bi) if bi > 0 else None)
                 else:
                     from catboost import CatBoostClassifier
                     mm = CatBoostClassifier(); mm.load_model(f"{MODEL_ROOT}/JOINT_{family}_seed{seed}.cbm")

@@ -255,7 +255,7 @@ def main():
     print(f"  跨币种差异需 <= {config.CROSS_ASSET_MAX_DELTA*100:.0f}pp")
     print(f"{'=' * 65}\n")
 
-    model_dir = "/workspace/simpletrade/models_saved/eth_validate"
+    model_dir = os.path.join(config.PROJECT_DIR, "models_saved", "eth_validate")
     os.makedirs(model_dir, exist_ok=True)
     t_start = time.time()
 
