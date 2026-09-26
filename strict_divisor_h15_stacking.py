@@ -1,4 +1,4 @@
-"""H=15m 严格约数特征阵列 (1m, 3m, 5m, 15m) 三大核心模型族 Stacking 元学习器评估
+"""H=15m 严格约数特征阵列 (1m, 3m, 5m, 15m) 三大核心模型族 Stacking 元学习器评估 (严格因果无泄漏版)
 
 精确定位:
 预测目标 H = 15m (未来 15 分钟涨跌，即 t+15 根 1min K 线价格)。
@@ -32,6 +32,7 @@ from sklearn.metrics import roc_auc_score
 warnings.filterwarnings('ignore')
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import config
+from causal_eval import eval_r2_causal_daily
 
 def set_seed(seed=42):
     np.random.seed(seed)
@@ -42,7 +43,6 @@ def set_seed(seed=42):
 set_seed(42)
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-# ========== 1. 构建 H=15m 严格约数 (1m, 3m, 5m, 15m) 实时特征 ==========
 def build_h15_divisor_features(df_self, df_other=None):
     p_self = pl.from_pandas(df_self) if isinstance(df_self, pd.DataFrame) else df_self
 
@@ -55,11 +55,9 @@ def build_h15_divisor_features(df_self, df_other=None):
     d_vol = buy - sell
     tot_vol = buy + sell
 
-    # 1m 基础特征
     exprs.append((close.log() - close.log().shift(1)).fill_null(0.0).alias('lr1_1m'))
     exprs.append((d_vol / (tot_vol + 1e-9)).fill_null(0.0).alias('cvd_1m'))
 
-    # 严格使用 15 的整除约数 [3, 5, 15]
     divisors = [3, 5, 15]
     for tf in divisors:
         roll_max = high.rolling_max(window_size=tf)
@@ -81,7 +79,6 @@ def build_h15_divisor_features(df_self, df_other=None):
         ema_tf = close.ewm_mean(span=tf, adjust=False)
         exprs.append(((close - ema_tf) / (close + 1e-9)).fill_null(0.0).alias(f'bias_{tf}m'))
 
-    # 跨资产约数对齐
     if df_other is not None:
         p_other = pl.from_pandas(df_other) if isinstance(df_other, pd.DataFrame) else df_other
         ts_s = p_self['ts'].to_numpy()
@@ -106,7 +103,6 @@ def build_h15_divisor_features(df_self, df_other=None):
     feats = np.nan_to_num(feats, nan=0.0, posinf=0.0, neginf=0.0).astype(np.float32)
     return feats, feat_cols
 
-# ========== 2. ResNet Pattern CNN ==========
 class ResBlock1D(nn.Module):
     def __init__(self, channels):
         super(ResBlock1D, self).__init__()
@@ -163,39 +159,13 @@ class FastPatternDataset(Dataset):
         w_idx = self.window_indices[idx]
         return torch.from_numpy(self.window_view[w_idx]), torch.tensor(self.labels[idx], dtype=torch.float32)
 
-def eval_r2_daily(p, y, ts_arr):
-    n = len(p)
-    pred = (p >= 0.5).astype(np.int8)
-    conf = np.maximum(p, 1 - p)
-    sec_arr = ts_arr.astype(np.int64)
-    day = sec_arr // 86400
-    days = np.unique(day)
-    sm = np.zeros(n, bool)
-
-    for d in days:
-        md = day == d
-        kd = max(1, int(np.ceil(int(md.sum()) * 0.01)))
-        sub = np.where(md)[0]
-        sm[sub[np.argsort(-conf[sub])[:kd]]] = True
-
-    sel = np.where(sm)[0]
-    mts = sec_arr[sel].astype("datetime64[s]").astype("datetime64[M]")
-    uniq = np.unique(mts)
-    acc_m = {str(u)[:7]: float((pred[sel] == y[sel])[mts == u].mean()) for u in uniq if (mts == u).sum() >= 5}
-    min_a = min(acc_m.values()) if len(acc_m) > 0 else 0.0
-    bad_m = sum(1 for a in acc_m.values() if a < 0.55)
-    overall_acc = float((pred[sel] == y[sel]).mean()) if len(sel) > 0 else 0.0
-    tpd = float(sel.size) / len(days)
-    return overall_acc, min_a, bad_m, tpd, acc_m
-
 def to_rank(p):
     return (np.argsort(np.argsort(p)) / (len(p) - 1)).astype(np.float32)
 
-# ========== 3. 核心评估流程 ==========
 def run_h15_divisor_stacking(symbol='ETH'):
     horizon = 15
     print(f"\n" + "=" * 75, flush=True)
-    print(f"  【H=15m 严格整除约数 (1m, 3m, 5m, 15m) 三大模型族 Stacking】{symbol}", flush=True)
+    print(f"  【H=15m 约数 (1m, 3m, 5m, 15m) 三大模型族 严格因果评估】{symbol}", flush=True)
     print("=" * 75, flush=True)
 
     raw_e = pd.read_parquet(os.path.join(config.DS_DIR, "raw_ETH.parquet")).sort_values('ts').reset_index(drop=True)
@@ -239,7 +209,7 @@ def run_h15_divisor_stacking(symbol='ETH'):
     Xte, yte, ts_te = feats[te_idx], label[te_idx], ts[te_idx]
 
     # --- 1. ResNet Pattern CNN ---
-    print("\n[1/3] 训练【模型族 1】ResNet Pattern CNN (基于 H=15m 约数特征)...", flush=True)
+    print("\n[1/3] 训练 ResNet Pattern CNN...", flush=True)
     sw_view = sliding_window_view(feats, window_shape=LOOKBACK, axis=0).transpose(0, 2, 1)
 
     tr_ds = FastPatternDataset(sw_view, label, tr_idx, lookback=LOOKBACK)
@@ -259,7 +229,7 @@ def run_h15_divisor_stacking(symbol='ETH'):
     criterion = nn.BCELoss()
 
     best_es_auc = 0.0
-    best_path = os.path.join(config.MODEL_DIR, f"div15_cnn_{symbol}.pt")
+    best_path = os.path.join(config.MODEL_DIR, f"causal_div15_cnn_{symbol}.pt")
 
     for ep in range(1, 3):
         cnn_model.train()
@@ -280,8 +250,7 @@ def run_h15_divisor_stacking(symbol='ETH'):
             best_es_auc = es_auc
             torch.save(cnn_model.state_dict(), best_path)
 
-    if os.path.exists(best_path):
-        cnn_model.load_state_dict(torch.load(best_path))
+    if os.path.exists(best_path): cnn_model.load_state_dict(torch.load(best_path))
     cnn_model.eval()
     mv_cnn, te_cnn = [], []
     with torch.no_grad():
@@ -291,7 +260,7 @@ def run_h15_divisor_stacking(symbol='ETH'):
     p_cnn_te = np.concatenate(te_cnn)
 
     # --- 2. Pattern GBDT ---
-    print("[2/3] 训练【模型族 2】Pattern GBDT (基于 H=15m 约数特征)...", flush=True)
+    print("[2/3] 训练 Pattern GBDT...", flush=True)
     sw = np.clip(np.abs(retr) * 50, 0.5, 5.0)
     dtr = lgb.Dataset(Xtr, ytr, weight=sw)
     des = lgb.Dataset(Xes, yes, reference=dtr)
@@ -305,8 +274,8 @@ def run_h15_divisor_stacking(symbol='ETH'):
     p_gbdt_mv = m_gbdt.predict(Xmv)
     p_gbdt_te = m_gbdt.predict(Xte)
 
-    # --- 3. JOINT Pool20 跨资产融合族 ---
-    print("[3/3] 加载【模型族 3】JOINT Pool20 跨资产融合族...", flush=True)
+    # --- 3. JOINT Pool20 ---
+    print("[3/3] 加载 JOINT Pool20...", flush=True)
     from data_store import AssetContext
     ctx = AssetContext(symbol, horizon=15 if horizon == 15 else 30)
     ts_joint_mv = np.asarray(ctx.times("meta_val")).astype("datetime64[s]").astype(np.int64)
@@ -328,7 +297,7 @@ def run_h15_divisor_stacking(symbol='ETH'):
     p_cat_te = np.load(os.path.join(config.DS_DIR, f"JOINT_{symbol}_cat_test_P.npy")).mean(axis=0)[idx_te_match]
     p_joint_te = (p_lgb_te + p_xgb_te + p_cat_te) / 3.0
 
-    # --- 4. Stacking 元学习器 ---
+    # --- 4. Stacking 严格因果评估 ---
     r_cnn_mv, r_cnn_te = to_rank(p_cnn_mv), to_rank(p_cnn_te)
     r_gbdt_mv, r_gbdt_te = to_rank(p_gbdt_mv), to_rank(p_gbdt_te)
     r_joint_mv, r_joint_te = to_rank(p_joint_mv), to_rank(p_joint_te)
@@ -342,17 +311,17 @@ def run_h15_divisor_stacking(symbol='ETH'):
 
     p_stacking = meta_learner.predict_proba(X_meta_te)[:, 1]
     auc_stacking = roc_auc_score(yte, p_stacking)
-    acc_stacking, min_stacking, bad_stacking, tpd_stacking, acc_m_stacking = eval_r2_daily(p_stacking, yte, ts_te)
+    acc_stacking, min_stacking, bad_stacking, tpd_stacking, acc_m_stacking = eval_r2_causal_daily(p_stacking, yte, ts_te)
     m_mean_stacking = np.mean(list(acc_m_stacking.values()))
 
     auc_cnn = roc_auc_score(yte, r_cnn_te)
-    acc_cnn, min_cnn, bad_cnn, _, _ = eval_r2_daily(r_cnn_te, yte, ts_te)
+    acc_cnn, min_cnn, bad_cnn, _, _ = eval_r2_causal_daily(r_cnn_te, yte, ts_te)
 
     auc_gbdt = roc_auc_score(yte, r_gbdt_te)
-    acc_gbdt, min_gbdt, bad_gbdt, _, _ = eval_r2_daily(r_gbdt_te, yte, ts_te)
+    acc_gbdt, min_gbdt, bad_gbdt, _, _ = eval_r2_causal_daily(r_gbdt_te, yte, ts_te)
 
     print("\n" + "=" * 75, flush=True)
-    print(f"  【H=15m 约数阵列 (1m, 3m, 5m, 15m) {symbol} 评估最终结果】", flush=True)
+    print(f"  【H=15m 严格因果评估结果 ({symbol})】", flush=True)
     print("=" * 75, flush=True)
     print(f"模型族 1: ResNet Pattern CNN -> AUC: {auc_cnn:.4f} | Top1%准确率: {acc_cnn*100:.2f}% | 最低月: {min_cnn*100:.1f}% | 坏月: {bad_cnn}个")
     print(f"模型族 2: Pattern GBDT       -> AUC: {auc_gbdt:.4f} | Top1%准确率: {acc_gbdt*100:.2f}% | 最低月: {min_gbdt*100:.1f}% | 坏月: {bad_gbdt}个")
@@ -367,7 +336,7 @@ def run_h15_divisor_stacking(symbol='ETH'):
 
 def main():
     print("=================================================================", flush=True)
-    print("  H=15m 严格约数阵列 (1m, 3m, 5m, 15m) 三大模型族 Stacking 元学习评估", flush=True)
+    print("  H=15m 严格因果无泄漏 (eval_r2_causal_daily) 评估", flush=True)
     print("=================================================================", flush=True)
 
     run_h15_divisor_stacking('ETH')
