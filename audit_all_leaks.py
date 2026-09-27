@@ -23,6 +23,7 @@ warnings.filterwarnings('ignore')
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import config
 
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "experiments"))
 from strict_divisor_h15_stacking import build_h15_divisor_features
 from causal_eval import eval_r2_causal_daily
 
