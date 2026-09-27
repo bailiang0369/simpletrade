@@ -1,0 +1,182 @@
+"""Ultra-Fast Restore High-Winrate Pipeline Execution (Lightweight CNN)
+"""
+
+import os, sys, time, gc, warnings
+import numpy as np
+import pandas as pd
+import polars as pl
+import torch
+import torch.nn as nn
+from torch.utils.data import TensorDataset, DataLoader
+import lightgbm as lgb
+from catboost import CatBoostClassifier
+import xgboost as xgb
+from sklearn.metrics import roc_auc_score
+
+warnings.filterwarnings('ignore')
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+import config
+from causal_eval import eval_r2_causal_daily
+
+class PatternResBlock(nn.Module):
+    def __init__(self, channels):
+        super().__init__()
+        self.conv1 = nn.Conv1d(channels, channels, kernel_size=3, padding=1)
+        self.bn1 = nn.BatchNorm1d(channels)
+        self.relu = nn.ReLU()
+        self.conv2 = nn.Conv1d(channels, channels, kernel_size=3, padding=1)
+        self.bn2 = nn.BatchNorm1d(channels)
+
+    def forward(self, x):
+        residual = x
+        out = self.relu(self.bn1(self.conv1(x)))
+        out = self.bn2(self.conv2(out))
+        return self.relu(out + residual)
+
+class PatternResNet(nn.Module):
+    def __init__(self, in_features, seq_len=30, hidden_dim=32):
+        super().__init__()
+        self.in_proj = nn.Conv1d(in_features, hidden_dim, kernel_size=1)
+        self.res1 = PatternResBlock(hidden_dim)
+        self.pool = nn.AdaptiveAvgPool1d(1)
+        self.head = nn.Sequential(
+            nn.Linear(hidden_dim, 16),
+            nn.ReLU(),
+            nn.Linear(16, 1)
+        )
+
+    def forward(self, x):
+        x = x.transpose(1, 2)
+        out = torch.relu(self.in_proj(x))
+        out = self.res1(out)
+        out = self.pool(out).squeeze(-1)
+        return torch.sigmoid(self.head(out))
+
+def train_eval_restored_ultra_fast(symbol: str = "ETH", horizon_min: int = 15):
+    print(f"\n=======================================================", flush=True)
+    print(f"Ultra-Fast Restored Pipeline for {symbol} H={horizon_min}m", flush=True)
+    print(f"=======================================================", flush=True)
+
+    base_path = f"data/datasets/ds_{symbol}_h{horizon_min}.parquet"
+    if not os.path.exists(base_path):
+        base_path = f"data/datasets/ds_{symbol}.parquet"
+
+    df = pl.read_parquet(base_path)
+    ignore_cols = ['ret_day', 'label', 'soft_label', 'ret_future', 'ts']
+    feat_cols = [c for c in df.columns if c not in ignore_cols]
+
+    print(f"Dataset rows: {len(df):,}, Features count: {len(feat_cols)}", flush=True)
+
+    X = df.select(feat_cols).to_numpy().astype(np.float32)
+    y = df['label'].to_numpy()
+    ts = df['ts'].to_numpy()
+
+    n = len(df)
+    train_idx = int(n * 0.8)
+
+    X_tr, y_tr = X[:train_idx], y[:train_idx]
+    X_te, y_te, ts_te = X[train_idx:], y[train_idx:], ts[train_idx:]
+
+    # Family 1: Pattern GBDT
+    print("\n[Family 1] Training CatBoost + LightGBM...", flush=True)
+    clf_cb = CatBoostClassifier(iterations=350, learning_rate=0.03, depth=7, random_seed=42, thread_count=4, verbose=0)
+    clf_cb.fit(X_tr[::2], y_tr[::2])
+    p_gbdt_cb = clf_cb.predict_proba(X_te)[:, 1]
+
+    clf_lgb = lgb.LGBMClassifier(n_estimators=250, learning_rate=0.03, num_leaves=63, subsample=0.8, colsample_bytree=0.7, random_state=42, n_jobs=4, verbose=-1)
+    clf_lgb.fit(X_tr[::2], y_tr[::2])
+    p_gbdt_lgb = clf_lgb.predict_proba(X_te)[:, 1]
+
+    p_gbdt = 0.5 * p_gbdt_cb + 0.5 * p_gbdt_lgb
+
+    # Family 2: ResNet Pattern CNN (Ultra Fast Subsampled Sequence Generation)
+    print("\n[Family 2] Training PatternResNet CNN (30-min Lookback)...", flush=True)
+    seq_len = 30
+    stride = 10
+    num_seqs = (len(X_tr) - seq_len) // stride
+    X_tr_seq = np.zeros((num_seqs, seq_len, X_tr.shape[1]), dtype=np.float32)
+    y_tr_seq = np.zeros(num_seqs, dtype=np.float32)
+    for i in range(num_seqs):
+        idx = i * stride
+        X_tr_seq[i] = X_tr[idx : idx + seq_len]
+        y_tr_seq[i] = y_tr[idx + seq_len - 1]
+
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    model = PatternResNet(in_features=X_tr.shape[1], seq_len=seq_len).to(device)
+    optimizer = torch.optim.AdamW(model.parameters(), lr=2e-3, weight_decay=1e-4)
+    criterion = nn.BCELoss()
+
+    dataset_tr = TensorDataset(torch.tensor(X_tr_seq), torch.tensor(y_tr_seq))
+    loader_tr = DataLoader(dataset_tr, batch_size=512, shuffle=True)
+
+    model.train()
+    for epoch in range(2):
+        t0 = time.time()
+        for bx, by in loader_tr:
+            bx, by = bx.to(device), by.to(device)
+            optimizer.zero_grad()
+            out = model(bx).squeeze()
+            loss = criterion(out, by)
+            loss.backward()
+            optimizer.step()
+
+    # Predict CNN on Test
+    model.eval()
+    def predict_cnn_fast(model, X_te_arr, seq_len=30):
+        preds = np.full(len(X_te_arr), 0.5, dtype=np.float32)
+        test_stride = 5
+        num_test_seqs = (len(X_te_arr) - seq_len) // test_stride
+        X_te_seq = np.zeros((num_test_seqs, seq_len, X_te_arr.shape[1]), dtype=np.float32)
+        indices = []
+        for i in range(num_test_seqs):
+            idx = i * test_stride
+            X_te_seq[i] = X_te_arr[idx : idx + seq_len]
+            indices.append(idx + seq_len - 1)
+
+        with torch.no_grad():
+            bx = torch.tensor(X_te_seq, dtype=torch.float32).to(device)
+            out = model(bx).squeeze().cpu().numpy()
+            preds[indices] = out
+            # Forward fill missing stride indices
+            df_p = pd.Series(preds)
+            df_p[df_p == 0.5] = np.nan
+            preds = df_p.ffill().bfill().to_numpy()
+        return preds
+
+    p_cnn = predict_cnn_fast(model, X_te, seq_len=seq_len)
+
+    # Family 3: JOINT Cross-Asset XGBoost
+    print("\n[Family 3] Training JOINT Cross-Asset XGBoost...", flush=True)
+    clf_xgb = xgb.XGBClassifier(n_estimators=250, learning_rate=0.03, max_depth=7, random_state=42, n_jobs=4, tree_method='hist')
+    clf_xgb.fit(X_tr[::2], y_tr[::2])
+    p_joint = clf_xgb.predict_proba(X_te)[:, 1]
+
+    # Rank Uniformization Voting Stacking
+    def to_rank(p):
+        return (pd.Series(p).rank(pct=True).values).astype(np.float32)
+
+    r_gbdt = to_rank(p_gbdt)
+    r_cnn = to_rank(p_cnn)
+    r_joint = to_rank(p_joint)
+
+    p_stacking = 0.4 * r_gbdt + 0.3 * r_cnn + 0.3 * r_joint
+
+    # Evaluate under strict causal evaluation (eval_r2_causal_daily)
+    print(f"\n=======================================================", flush=True)
+    print(f"STRICT CAUSAL BLIND TEST RESULTS FOR {symbol} H={horizon_min}m", flush=True)
+    print(f"=======================================================", flush=True)
+
+    for name, p in [('Pattern GBDT', p_gbdt), ('ResNet Pattern CNN', p_cnn), ('JOINT Model', p_joint), ('Restored 3-Family Ensemble', p_stacking)]:
+        print(f"\n<<< {name} >>>", flush=True)
+        for q in [98.5, 99.0, 99.2, 99.5]:
+            acc, min_a, bad_m, tpd, acc_m = eval_r2_causal_daily(p, y_te, ts_te, p_quantile=q)
+            print(f"  Quantile P{q:4.1f}% | Win Rate: {acc*100:6.2f}% | Min Month: {min_a*100:5.2f}% | Daily Signals: {tpd:5.2f}", flush=True)
+
+    np.save('p_restored_stacking.npy', p_stacking)
+    np.save('y_restored_te.npy', y_te)
+    np.save('ts_restored_te.npy', ts_te)
+
+    return p_stacking, y_te, ts_te
+
+if __name__ == "__main__":
+    train_eval_restored_ultra_fast(symbol="ETH", horizon_min=15)
