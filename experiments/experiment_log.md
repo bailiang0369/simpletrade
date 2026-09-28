@@ -763,3 +763,51 @@ ETH 只有 **2 个 cross-asset 特征**: `stoch_cross_14`, `stoch_cross_60`。�
 2. 调优截断比例（10% 是不是最优？试 8%, 12%）
 3. 同时优化 ε=0.0005（去噪）+ 负权重（可能有叠加效应）
 4. 增加真正的 cross-asset 特征
+
+## [2026-09-28] CORRELATION & STACKING ANALYSIS
+
+**Question**: Should we stack/vote Tree + NN?
+
+### Results
+
+| Model | AUC (TE) | Train | Anchors |
+|-------|----------|-------|---------|
+| LightGBM 5-seed rank-agg | **0.5442** | 1M trees | 480K |
+| MLP (seq v6, 15-models) | 0.5360 | 200K NN | 60K |
+
+**Correlation (rank-based): 0.80**
+- Tree on common 60K anchors: AUC=0.5458
+- MLP on common 60K anchors: AUC=0.5360
+
+### Ensemble Methods
+
+| Method | AUC | Gain vs Tree |
+|--------|-----|-------------|
+| Tree ONLY | **0.5458** | baseline |
+| OPT_BLEND(w=1.00/0.00) | 0.5458 | +0.0000 |
+| LR_STACKING | 0.5458 | +0.0000 |
+| PROB_AVG | 0.5431 | -0.0027 ❌ |
+| RANK_AVG | 0.5431 | -0.0027 ❌ |
+| MLP ONLY | 0.5360 | -0.0098 |
+
+### Full Tree on 480K anchor test set
+
+| Top-% | Acc | TPD |
+|-------|-----|-----|
+| 0.5% | 62.1% | 7.2 |
+| **1.0%** | **60.1%** | **14.4** |
+| 1.5% | 59.0% | 21.6 |
+| 2.0% | 58.2% | 28.8 |
+| 3.0% | 57.2% | 43.2 |
+| 5.0% | 56.5% | 72.0 |
+
+### Verdict
+
+**NO stacking/voting needed.** CORR=0.80 means Tree and NN see almost identical market signals. Optimal blend = 100% Tree, 0% NN. Simple averages actually **hurt** AUC.
+
+**Tree (LightGBM baseline with logloss metric + lr=0.03 + min_child=200) is already the best single model.** Further improvement should focus on making Tree variants more diverse (different feature subsets) rather than adding NN.
+
+### Key Insight
+- LightGBM params: metric='auc' gives slightly better AUC than 'binary_logloss' (0.5444 vs 0.5434)
+- Train size 1M vs 1.5M makes negligible difference
+- float16 intermediate storage needed to fit in 4GB cgroup memory
