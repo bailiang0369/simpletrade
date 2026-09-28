@@ -1,6 +1,4 @@
-"""Optimized FAISS Cosine KNN Search with High-Dimension Feature Embeddings.
-
-Combines L2-normalized relative OHLC pattern vectors with Z-score trend context features into FAISS Index Flat IP.
+"""Ultra-Lightweight FAISS Pattern Clustering Engine.
 """
 
 import os, sys, time, warnings
@@ -14,9 +12,9 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import config
 from causal_eval import eval_r2_causal_daily
 
-def run_optimized_faiss_knn(symbol: str = "ETH", horizon_min: int = 15, seq_len: int = 30, top_k: int = 10):
+def run_colab_faiss_single(symbol: str = "ETH", horizon_min: int = 15, seq_len: int = 15, top_k: int = 10):
     print(f"\n=======================================================", flush=True)
-    print(f"Optimized FAISS Cosine KNN Engine ({symbol} H={horizon_min}m, K={top_k})", flush=True)
+    print(f"Colab Alignment FAISS Pattern Clustering ({symbol} H={horizon_min}m, K={top_k})", flush=True)
     print(f"=======================================================", flush=True)
 
     raw_path = f"data/datasets/raw_{symbol}.parquet"
@@ -49,14 +47,13 @@ def run_optimized_faiss_knn(symbol: str = "ETH", horizon_min: int = 15, seq_len:
     l_rel = (low_win - c_t) / c_t
     c_rel = (close_win - c_t) / c_t
 
-    # Vector concatenate
     vectors = np.concatenate([o_rel, h_rel, l_rel, c_rel], axis=1).astype(np.float32)
     vectors_norm = vectors / (np.linalg.norm(vectors, axis=1, keepdims=True) + 1e-8)
 
     n = len(vectors_norm)
     train_idx = int(n * 0.8)
 
-    tr_stride = 8
+    tr_stride = 16
     tr_indices = np.arange(0, train_idx, tr_stride)
 
     te_stride = 16
@@ -72,45 +69,33 @@ def run_optimized_faiss_knn(symbol: str = "ETH", horizon_min: int = 15, seq_len:
     dim = vectors_norm.shape[1]
     index = faiss.IndexFlatIP(dim)
     index.add(vectors_tr)
+    print(f"FAISS Index Flat IP built with {index.ntotal:,} historical patterns.", flush=True)
 
-    print(f"Querying FAISS IndexFlatIP (Cosine) with {index.ntotal:,} historical patterns...", flush=True)
     t0 = time.time()
     distances, indices = index.search(vectors_te, top_k)
     weights = np.maximum(distances, 1e-5)
     neighbor_labels = y_tr[indices]
 
     weighted_p_sub = np.sum(neighbor_labels * weights, axis=1) / np.sum(weights, axis=1)
-    print(f"Search completed in {time.time()-t0:.1f}s", flush=True)
+    print(f"FAISS Cosine search finished in {time.time()-t0:.1f}s", flush=True)
 
-    p_full = np.full(len(ts_te_all), 0.5, dtype=np.float32)
-    p_full[te_indices] = weighted_p_sub
+    raw_acc = ((weighted_p_sub >= 0.5) == y_te_all[te_indices]).mean()
+    print(f"--> FAISS KNN Raw Test Accuracy (Query Set): {raw_acc*100:.2f}%", flush=True)
 
-    df_p = pd.Series(p_full)
+    p_faiss_full = np.full(len(ts_te_all), 0.5, dtype=np.float32)
+    p_faiss_full[te_indices] = weighted_p_sub
+
+    df_p = pd.Series(p_faiss_full)
     df_p[df_p == 0.5] = np.nan
-    p_full = df_p.ffill().bfill().to_numpy()
+    p_faiss_full = df_p.ffill().bfill().to_numpy()
 
     print(f"\n=======================================================", flush=True)
-    print(f"FAISS COSINE KNN EVALUATION ({symbol} H={horizon_min}m, K={top_k})", flush=True)
+    print(f"COLAB ALIGNED FAISS CAUSAL EVALUATION ({symbol} H={horizon_min}m, K={top_k})", flush=True)
     print(f"=======================================================", flush=True)
 
     for q in [98.5, 99.0, 99.2, 99.5]:
-        acc, min_a, bad_m, tpd, acc_m = eval_r2_causal_daily(p_full, y_te_all, ts_te_all, p_quantile=q)
-        print(f"Quantile P{q:4.1f}% | Daily Signals: {tpd:5.2f} | FAISS Cosine Win Rate: {acc*100:6.2f}% | Worst Month: {min_a*100:5.2f}%", flush=True)
-
-    acc_p99, min_a, bad_m, tpd, acc_m = eval_r2_causal_daily(p_full, y_te_all, ts_te_all, p_quantile=99.0)
-    return {
-        'symbol': symbol,
-        'horizon_min': horizon_min,
-        'top_k': top_k,
-        'overall_acc': acc_p99,
-        'daily_trades': tpd,
-        'bad_m_count': bad_m,
-        'worst_month_acc': min_a,
-        'acc_m': acc_m
-    }
+        acc, min_a, bad_m, tpd, acc_m = eval_r2_causal_daily(p_faiss_full, y_te_all, ts_te_all, p_quantile=q)
+        print(f"Quantile P{q:4.1f}% | Daily Signals: {tpd:5.2f} | FAISS Win Rate: {acc*100:6.2f}% | Worst Month: {min_a*100:5.2f}%", flush=True)
 
 if __name__ == "__main__":
-    run_optimized_faiss_knn(symbol="ETH", horizon_min=15, seq_len=30, top_k=10)
-    run_optimized_faiss_knn(symbol="ETH", horizon_min=30, seq_len=30, top_k=10)
-    run_optimized_faiss_knn(symbol="BTC", horizon_min=15, seq_len=30, top_k=10)
-    run_optimized_faiss_knn(symbol="BTC", horizon_min=30, seq_len=30, top_k=10)
+    run_colab_faiss_single(symbol="ETH", horizon_min=15, seq_len=15, top_k=10)
