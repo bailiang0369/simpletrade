@@ -51,7 +51,7 @@ def build_features(df: pl.DataFrame) -> pl.DataFrame:
     for w in [30, 60, 120]:
         mu = C.rolling_mean(w)
         sd = C.rolling_std(w, ddof=1)
-        e[f"z_{w}"] = (C - mu) / (sd + EPS)
+        e[f"z_{w}"] = ((C - mu) / (sd + EPS)).clip(-100, 100)
 
     # ---- 区间位置 / 支撑压力 ----
     for w in [30, 120, 240]:
@@ -76,7 +76,7 @@ def build_features(df: pl.DataFrame) -> pl.DataFrame:
     e["cvd_60"] = (TB - TS).rolling_sum(60) / ((TB + TS).rolling_sum(60) + EPS)
     # 直接买卖比值 (实验验证: +0.3pp tail ACC)
     e["tb_ratio"] = TB / (TB + TS + EPS)             # 主动买占比
-    e["tb_ts_ratio"] = TB / (TS + EPS)               # 主动买/主动卖比值
+    e["tb_ts_ratio"] = (TB / (TS + EPS)).clip(0, 50)               # 主动买/主动卖比值
 
     # ---- Funding Rate 滚动统计 (实验验证: +0.0012 AUC, +1.5pp tail ACC) ----
     F = pl.col("funding")
@@ -88,7 +88,7 @@ def build_features(df: pl.DataFrame) -> pl.DataFrame:
         e[f"fund_z_{w}"] = (F - fm) / (fs + EPS)
 
     # ---- 动量一致性 ----
-    e["mom_align_30_240"] = ((C / C.shift(30) - 1) * (C / C.shift(240) - 1) * 1e8)
+    e["mom_align_30_240"] = ((C / C.shift(30) - 1) * (C / C.shift(240) - 1) * 100)
 
     # ---- 日内/时间特征 (UTC) ----
     hour = DT.dt.hour()
@@ -118,8 +118,8 @@ def build_features(df: pl.DataFrame) -> pl.DataFrame:
     low_break = (C < L.rolling_min(120).shift(1)).cast(pl.Float32)
     e["low_break_cnt_120"] = low_break.rolling_mean(120)
     # 反弹失败: 最近 10 根内出现过 5 根阳线主导窗口, 且当前创新低
-    green5 = (C > O).cast(pl.Float32).rolling_mean(5) > 0.6
-    bounce_fail = (green5.rolling_max(10) & low_break.cast(pl.Boolean)).cast(pl.Float32)
+    green5 = ((C > O).cast(pl.Float32).rolling_mean(5) > 0.6).cast(pl.Float32)
+    bounce_fail = (green5.rolling_max(10) * low_break).cast(pl.Float32)
     e["bounce_fail_240"] = (bounce_fail.rolling_sum(240) / 20).clip(0, 1)
     # 阴跌+低位状态标志: 240根净跌且位置低 (超卖陷阱区)
     e["regime_dn_bear"] = ((lr_240 < 0) & (e["pos_120"] < 0.3)).cast(pl.Float32)
