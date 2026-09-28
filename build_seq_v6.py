@@ -71,7 +71,7 @@ ch_mem[:] = ch_arr[:]; del ch_arr; gc.collect()
 ch_rm = np.memmap(ch_path, dtype=np.float32, mode='r', shape=(CIN, N))
 
 # Anchors
-H=15; W=64; S=8; MAX_TR=150_000
+H=15; W=64; S=8; MAX_TR=200_000
 anchor_indices = np.arange(W, N-H, S, dtype=np.int64)
 anchor_ts = ts[anchor_indices]
 def tmask_arr(ts_, s, e):
