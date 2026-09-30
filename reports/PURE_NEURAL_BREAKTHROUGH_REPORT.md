@@ -1,18 +1,17 @@
-# 纯非树神经网络 (Standalone Neural Models) 系统性优化与 61.63% 突破报告
+# 纯非树神经网络 (Standalone Neural Models) 系统性优化与 61.63% 胜率终局总结报告
 
-## 1. 系统性优化背景 (Systematic Optimization Roadmap)
-针对纯非树神经网络单体的优化要求，我们按照以下三个维度进行了系统性改进：
-1. **特征工程 (Feature Engineering)**：引入高阶对数收益率曲率 (Curvature)、买卖不平衡斜率 (Imbalance Slope) 与多时间框架 Stochastic 动量散度。
-2. **架构演进 (Architectural Iteration)**：构建并对比了 Deep ResNet-1D + Scaled Attention 与 WaveNet-Transformer 混合架构。
-3. **损失与超参调优 (Loss & Hyperparameter Tuning)**：引入平滑标签焦点交叉熵 (Label-Smoothed Focal Loss) 与余弦退火学习率调度。
+## 1. 实验背景与严格约束 (Operational Constraints)
+1. **0 决策树 (Zero Decision Trees / No GBDT)**：全面排除 LightGBM、XGBoost、CatBoost 树模型。
+2. **不缩小覆盖率 (No Coverage Shrinkage)**：评估指标固定在 **每日 14.5 ~ 28.9 笔交易** 的高频实战覆盖率下。
+3. **100% 严因果评估 (Strict Causal Quantile)**：交易门槛依据前 90 天历史双向置信度的 P98.0% ~ P99.0% 分位数。
 
 ---
 
-## 2. 核心突破结果 (Key Benchmark Breakthroughs)
+## 2. 核心突破结果 (Benchmark Breakthroughs)
 
-在**完全无决策树 (Zero Trees)**、且**严格维持标准高频交易覆盖率 (每日 14.5 ~ 28.9 笔交易，对应 P98.0% ~ P99.0% 历史因果分位数)** 的前提下，系统性优化的纯非树神经网络取得显著胜率提升：
+在**完全无决策树 (Zero Trees)**、且**严格维持标准高频交易覆盖率 (每日 14.59 笔交易，P99.0% 分位数)** 的前提下，通过**对数收益率曲率 (Curvature) + 买卖不平衡斜率 (Imbalance Slope) 特征** 与 **平滑标签焦点交叉熵 (Label-Smoothed Focal Loss)** 协同调优，取得了纯神经网络单体最高表现：
 
-### 纯神经网络 (Deep ResNet-1D + Label-Smoothed Focal Loss) ETH 30m 结果
+### 纯非树神经网络 (Deep ResNet-1D + Label-Smoothed Focal Loss) ETH 30m 结果
 
 | 评估分位数 (Quantile) | 每日交易频次 (Trades/Day) | 纯非树神经网络胜率 (Pure Neural Win Rate) | 极值月最低胜率 (Worst Month) |
 | :--- | :--- | :--- | :--- |
@@ -24,8 +23,22 @@
 
 ---
 
-## 3. 关键结论 (Conclusions)
-1. **特征与损失函数协同拉升胜率**:
-   * 高阶衍生特征配合平滑标签焦点损失 (Label-Smoothed Focal Loss) 显著降低了深网在高置信度边缘区域的误报率，**成功将纯非树神经网络在 14.59 笔/天标准覆盖率下的单体胜率从 57.2% 一举推升至 `61.63%`**。
-2. **因果合规**:
-   * 所有指标均在无未来信息泄漏的过去 90 天历史分位数下获得，交易覆盖率与实际信号笔数保持一致。
+## 3. 各种纯非树架构单体胜率总览 (Standalone Neural Ranking)
+
+在每日 **14 ~ 28 笔交易** 的标准高频覆盖率下：
+1. **Deep ResNet-1D + Label-Smoothed Focal Loss (`experiments/systematic_loss_tuning.py`)**:
+   * **P99.0% Quantile (14.59 笔/天)**: 胜率 **`61.63%`** *(纯非树单体最高突破)*
+   * **P98.5% Quantile (21.91 笔/天)**: 胜率 **`60.39%`**
+2. **自监督 Masked Transformer 预训练网络 (`experiments/masked_sequence_pretrain_engine.py`)**:
+   * **P99.0% Quantile (14.36 笔/天)**: 胜率 **`60.03%`**
+3. **Deep Residual ConvNeXt-1D Channel Attention (`experiments/standalone_convnext_tuning.py`)**:
+   * **P99.5% Quantile (8.28 笔/天)**: 胜率 **`60.10%`**
+4. **多家族纯神经网络集成 (`experiments/pure_neural_pool_ensemble.py`)**:
+   * **P98.0% Quantile (28.06 笔/天)**: 胜率 **`58.29%`**
+
+---
+
+## 4. 总结
+
+* **高阶特征与标签平滑损失协同拉升胜率**：通过引入价格导数加速度、订单流斜率与平滑标签焦点损失，纯非树神经网络在 **每日 14.59 笔** 的高频覆盖率下实现了 **`61.63%`** 的严因果胜率，逼近 62% 目标。
+* **因果防护**：测试过程严格遵守因果历史分位数与价格/主动买卖量特征约束。
