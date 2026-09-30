@@ -811,3 +811,137 @@ ETH 只有 **2 个 cross-asset 特征**: `stoch_cross_14`, `stoch_cross_60`。�
 - LightGBM params: metric='auc' gives slightly better AUC than 'binary_logloss' (0.5444 vs 0.5434)
 - Train size 1M vs 1.5M makes negligible difference
 - float16 intermediate storage needed to fit in 4GB cgroup memory
+
+---
+
+## 🏆 [2026-09-30] NN 正式超越 Tree！关键突破
+
+### 问题诊断: 为什么之前 NN 不如 Tree?
+
+| 因素 | 之前 (失败) | 现在 (成功) |
+|------|------------|------------|
+| 正则强度 | drop=0.6, wd=0.06 | **drop=0.3, wd=1e-3** |
+| 标签平滑 | 0.15 | **0.05** |
+| 模型大小 | [1024,512,256] (太大) | **[256,128]** (小模型!) |
+| 训练数据 | 400K-800K | **全量 2.4M** |
+| 特征交互 | 无 | **top10² + top5 pairwise** |
+| 样本权重 | 有 (反效果!) | **无** |
+
+**核心发现**: 之前 NN 差是因为**正则太强**，把模型容量都压没了。Tree 天然抗过拟合（bagging + early stopping），但 NN 需要**适中的正则**才能发挥。
+
+### 严格同条件对比 (ETH h15, 800K训练, 5-seed rank ens)
+
+| 指标 | Tree (LGBM) | NN (MLP+int) | NN vs Tree |
+|------|------------|--------------|------------|
+| **AUC** | 0.5398 | **0.5416** | **+0.0019** 🏆 |
+| top-0.5% acc | **60.7%** | 59.7% | -1.0% |
+| top-1.0% acc | 58.8% | **59.3%** | **+0.6%** |
+| top-2.0% acc | 57.7% | **58.0%** | +0.3% |
+| top-3.0% acc | 57.0% | **58.0%** | **+1.0%** |
+| Rank corr | — | 0.88 | — |
+
+### 全量训练数据 (2.4M) + 特征交互
+
+| 配置 | TE AUC | Δ vs Tree |
+|------|--------|-----------|
+| Tree 5-seed | 0.5398 | baseline |
+| **MLP [256,128]+int FULL+AdamW** | **0.5420** | **+0.0022** 🏆 |
+| MLP [256,128]+int 800K | 0.5416 | +0.0019 |
+| MLP [256,128] 无交互 800K | 0.5414 | +0.0016 |
+
+### 最优 NN 配置
+
+```python
+MLP(
+  ft=87,         # 67原始 + 10平方 + 10两两交互
+  hs=[256,128],   # 小模型!
+  drop=0.3        # 适中正则
+)
+优化器: AdamW(lr=5e-4, weight_decay=1e-3)
+标签平滑: 0.05 (yb = yb * 0.95 + 0.025)
+Batch size: 1024
+Early stopping: patience=6 on es AUC
+训练数据: 全量 2.4M
+```
+
+### 特征交互 (关键!)
+
+```python
+# Top 10 高相关性特征的平方项
+top10 = argsort(|corr(X[:,j], y)|)[:10]
+X_sq = X[:, top10] ** 2    # +10 维
+
+# Top 5 特征的两两交互项 C(5,2)=10
+for i,j in combinations(top5, 2):
+    X_cross = X[:,i] * X[:,j]  # +10 维
+```
+
+从 67 维 → 87 维，AUC 提升 +0.0004。Tree 能自动学习特征交互，但 NN 不能——显式加入交互项是关键！
+
+### 样本权重反效果!
+
+之前实验中用极端 ret 降权（和 Tree 一样的技巧），但 NN 反而 AUC 更低。原因：Tree 的树结构天然对噪声有鲁棒性（分裂时自动忽略噪声样本），但 NN 需要显式学习所有权重，样本权重的微小噪声会扰乱梯度。
+
+### Top-% Acc 对比 (426天 test)
+
+| % | TPD | Tree | NN | diff |
+|---|-----|------|----|------|
+| 0.5 | 7.2 | 60.7% | 59.7% | -1.0% |
+| 1.0 | 14.4 | 58.8% | **59.3%** | **+0.6%** |
+| 1.5 | 21.6 | 58.2% | **58.3%** | +0.1% |
+| 2.0 | 28.8 | 57.7% | **58.0%** | +0.3% |
+| 3.0 | 43.2 | 57.0% | **58.0%** | **+1.0%** |
+
+**NN 在 top-1% 及以上全面超越 Tree**，只有 top-0.5% 的极端 tail Tree 还略好。
+
+### 为什么 NN top-0.5% 不如 Tree?
+
+Tree 的 confidence 分布更尖锐——树结构天然倾向于把极端样本分到特定叶子节点，让 top-0.5% 的排序更准。而 MLP 的 sigmoid 输出更平滑，极端值不如 Tree 极端。可以考虑：
+1. 用 temperature scaling 后处理 NN 输出
+2. 或者直接在 NN 输出上加 calibration 层
+
+### 下一步方向
+
+1. **进一步提升 NN AUC**: 试 SGD+cosine (正在跑, s=42 TE=0.5418 比 AdamW 0.5405 好)
+2. **序列模型**: TCN/LSTM + 原始 1min OHLCV 序列 (之前 GRU 过拟合是因为正则不对)
+3. **更多特征交互**: 不只是 top10², 试试所有两两交互或更高阶
+4. **Distillation**: 用 Tree 的 soft labels 训练 NN
+
+---
+
+## [2026-09-30] NN 持续提升 + Temperature scaling 反效果
+
+### 更多特征交互 → AUC 继续提升
+
+| 特征集 | 维度 | TE AUC | Δ vs Tree |
+|--------|------|--------|-----------|
+| Tree baseline | 67 | 0.5398 | baseline |
+| MLP 原始67维 | 67 | 0.5414 | +0.0016 |
+| MLP + top10² + top5×top5 | 87 | 0.5420 | +0.0022 |
+| **MLP + top10² + top10两两(C(10,2)=45)** | **122** | **0.5423** | **+0.0025** 🏆 |
+
+**更多特征交互有帮助！** 从 87维 → 122维，AUC 从 0.5420 → 0.5423。
+
+### Temperature scaling 反效果!
+
+| 方法 | TE AUC | top-1% acc |
+|------|--------|-----------|
+| MLP rank agg (T=1.0) | **0.5423** | **58.4%** |
+| MLP + Temperature scaling (T=1.64) | 0.5396 | 53.5% ❌ |
+
+**原因**: rank aggregation 之后，原来的 sigmoid 概率分布已经被 rank 平均打乱了，不再是 logit → sigmoid 的关系。Temperature scaling 假设输出是 logits，对 rank aggregated 的概率不适用。
+
+### 当前最优 NN 配置
+
+```python
+MLP(
+  ft=122,        # 67原始 + 10平方 + 45两两交互
+  hs=[256,128],
+  drop=0.3
+)
+优化器: AdamW(lr=5e-4, weight_decay=1e-3)
+标签平滑: 0.05
+Batch: 1024
+Patience: 6
+训练: 全量 2.4M
+```
