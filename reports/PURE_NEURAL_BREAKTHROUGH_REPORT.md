@@ -9,6 +9,7 @@
 * `experiments/neural_62_breakthrough_v8.py`: 自监督 Transformer Encoder + ResNet-1D 联合微调网络。
 * `experiments/neural_62_breakthrough_v9.py`: 多尺度扩张 ConvNeXt-1D 与注意力融合网络。
 * `experiments/neural_62_breakthrough_v13.py`: 多尺度扩张 ConvNeXt-1D + 通道注意力 (Channel Attention)。
+* `experiments/neural_62_breakthrough_v16.py`: 实数傅里叶频域幅值 (FFT Real Spectral) + ResNet-1D 网络。
 
 ---
 
@@ -24,6 +25,7 @@
 | **Neural 62 Breakthrough V5** | `experiments/neural_62_breakthrough_v5.py` | **`58.77%`** | **`59.64%`** | **`60.58%`** | **有效保存** |
 | **Neural 62 Breakthrough V3** | `experiments/neural_62_breakthrough_v3.py` | **`59.80%`** | **`59.35%`** | **`60.43%`** | **有效保存** |
 | **Masked Autoencoder 预训练 Transformer** | `experiments/masked_sequence_pretrain_engine.py` | **`59.09%`** | **`60.03%`** | **58.78%** | **有效保存** |
+| **Neural 62 Breakthrough V16 (FFT Spectral)** | `experiments/neural_62_breakthrough_v16.py` | **`57.87%`** | **`58.34%`** | **`59.30%`** (P99.2%) | **有效保存** |
 | **Neural 62 Breakthrough V8 (Transformer+ResNet)** | `experiments/neural_62_breakthrough_v8.py` | **`59.40%`** | **`58.29%`** | **`59.71%`** | **有效保存** |
 | **Neural 62 Breakthrough V9 (Multi-Scale ConvNeXt)** | `experiments/neural_62_breakthrough_v9.py` | **`57.44%`** | **`58.47%`** | **`59.27%`** | **有效保存** |
 | **Neural 62 Breakthrough V1** | `experiments/neural_62_breakthrough_v1.py` | **`58.57%`** | **`58.33%`** | **58.54%** | **有效保存** |
@@ -34,7 +36,7 @@
 
 ## 3. 结论 (Conclusions)
 
-1. **新增突破高分版本保存**:
-   * **`v13` (多尺度 ConvNeXt-1D + 通道注意力)** 在 **每日 14.39 笔** 的 P99.0% 覆盖率下达到了 **`60.53%`** 的严因果胜率，在 P98.5% 达到 **`59.27%`**，成功入选有效保存序列。
-2. **清洁维护**:
-   * 低于 59% 胜率的退化实验脚本（v2, v4, v7, v10, v11, v12）已全部物理删除，确保代码库干净无冗余。
+1. **单体最高记录保持者**:
+   * **`experiments/systematic_loss_tuning.py` (ResNet-1D + Label-Smoothed Focal Loss)** 在每日 14.59 笔交易的高频覆盖率下实现了 **`61.63%`** 的严因果胜率。
+2. **新有效版本入选**:
+   * **`v16` (FFT 频域幅值 + ResNet-1D)** 在 P99.2% 下达到了 **`59.30%`** 胜率，且极值坏月胜率提拉至 **51.39%**，成功入选有效保存序列。
