@@ -1,5 +1,5 @@
-"""Neural 62 Breakthrough Version 7 (Dedicated New Version File).
-Wide-and-Deep Temporal Neural Net (Wide Linear Feature Projections + Deep ResNet Attention).
+"""Neural 62 Breakthrough Version 9 (Dedicated New Version File).
+Multi-Scale Dilated ConvNeXt-1D + Channel & Scaled Dot-Product Attention Net.
 Zero Decision Trees, Zero Ensembles.
 """
 
@@ -15,25 +15,39 @@ warnings.filterwarnings('ignore')
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import config
 from causal_eval import eval_r2_causal_daily
-from experiments.systematic_architecture_benchmark import FastSeqDataset, ResNet1DBlock
+from experiments.systematic_architecture_benchmark import FastSeqDataset
 
-class WideAndDeepNeuralNet(nn.Module):
+class MultiScaleConvNeXtBlock(nn.Module):
+    def __init__(self, dim):
+        super().__init__()
+        self.dw1 = nn.Conv1d(dim, dim // 2, kernel_size=3, padding=1, dilation=1)
+        self.dw2 = nn.Conv1d(dim, dim // 2, kernel_size=3, padding=2, dilation=2)
+        self.norm = nn.GroupNorm(1, dim)
+        self.pw1 = nn.Conv1d(dim, 2 * dim, kernel_size=1)
+        self.act = nn.GELU()
+        self.pw2 = nn.Conv1d(2 * dim, dim, kernel_size=1)
+
+    def forward(self, x):
+        res = x
+        h = torch.cat([self.dw1(x), self.dw2(x)], dim=1)
+        h = self.norm(h)
+        h = self.pw1(h)
+        h = self.act(h)
+        h = self.pw2(h)
+        return res + h
+
+class Neural62BreakthroughNetV9(nn.Module):
     def __init__(self, in_features, hidden_dim=64):
         super().__init__()
-        # Wide Path
-        self.wide_proj = nn.Linear(in_features, 32)
+        self.in_proj = nn.Conv1d(in_features, hidden_dim, kernel_size=1)
+        self.b1 = MultiScaleConvNeXtBlock(hidden_dim)
+        self.b2 = MultiScaleConvNeXtBlock(hidden_dim)
 
-        # Deep Path
-        self.deep_in_proj = nn.Conv1d(in_features, hidden_dim, kernel_size=1)
-        self.b1 = ResNet1DBlock(hidden_dim)
-        self.b2 = ResNet1DBlock(hidden_dim)
         self.attn = nn.MultiheadAttention(embed_dim=hidden_dim, num_heads=4, batch_first=True)
         self.norm = nn.LayerNorm(hidden_dim)
-        self.deep_proj = nn.Linear(hidden_dim, 32)
 
-        # Fused Classifier
         self.head = nn.Sequential(
-            nn.Linear(64, 32),
+            nn.Linear(hidden_dim, 32),
             nn.LayerNorm(32),
             nn.GELU(),
             nn.Dropout(0.15),
@@ -41,24 +55,17 @@ class WideAndDeepNeuralNet(nn.Module):
         )
 
     def forward(self, x):
-        # x: (B, L, C)
-        last_step_x = x[:, -1, :]
-        wide_out = self.wide_proj(last_step_x)
-
         x_t = x.transpose(1, 2)
-        h = self.deep_in_proj(x_t)
+        h = self.in_proj(x_t)
         h = self.b1(h)
         h = self.b2(h).transpose(1, 2)
 
         attn_out, _ = self.attn(h, h, h)
-        h_fused = self.norm(h + attn_out)[:, -1, :]
-        deep_out = self.deep_proj(h_fused)
-
-        fused = torch.cat([wide_out, deep_out], dim=-1)
-        return self.head(fused)
+        h_fused = self.norm(h + attn_out)
+        return self.head(h_fused[:, -1, :])
 
 class LabelSmoothedFocalLoss(nn.Module):
-    def __init__(self, gamma=2.5, label_smoothing=0.04):
+    def __init__(self, gamma=2.8, label_smoothing=0.03):
         super().__init__()
         self.gamma = gamma
         self.eps = label_smoothing
@@ -71,9 +78,9 @@ class LabelSmoothedFocalLoss(nn.Module):
         focal_loss = ((1.0 - p_t) ** self.gamma) * bce
         return torch.mean(focal_loss)
 
-def run_neural_62_v7(symbol="ETH", horizon_min=30, seq_len=30, epochs=3, temperature=0.70):
+def run_neural_62_v9(symbol="ETH", horizon_min=30, seq_len=30, epochs=3, temperature=0.70):
     print(f"\n=======================================================", flush=True)
-    print(f"NEURAL 62 BREAKTHROUGH VERSION 7 (WIDE & DEEP): {symbol} H={horizon_min}m", flush=True)
+    print(f"NEURAL 62 BREAKTHROUGH VERSION 9 (MULTI-SCALE CONVNEXT): {symbol} H={horizon_min}m", flush=True)
     print(f"=======================================================", flush=True)
 
     dataset_path = f"data/datasets/ds_{symbol}_h{horizon_min}.parquet"
@@ -101,10 +108,10 @@ def run_neural_62_v7(symbol="ETH", horizon_min=30, seq_len=30, epochs=3, tempera
     loader_te = DataLoader(ds_te, batch_size=512, shuffle=False)
 
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    model = WideAndDeepNeuralNet(in_features=X.shape[1], hidden_dim=64).to(device)
+    model = Neural62BreakthroughNetV9(in_features=X.shape[1], hidden_dim=64).to(device)
     optimizer = torch.optim.AdamW(model.parameters(), lr=1e-3, weight_decay=1e-3)
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=epochs)
-    criterion = LabelSmoothedFocalLoss(gamma=2.5, label_smoothing=0.04)
+    criterion = LabelSmoothedFocalLoss(gamma=2.8, label_smoothing=0.03)
 
     model.train()
     for epoch in range(epochs):
@@ -136,17 +143,17 @@ def run_neural_62_v7(symbol="ETH", horizon_min=30, seq_len=30, epochs=3, tempera
     p_full = df_p.ffill().bfill().to_numpy()
 
     print(f"\n=======================================================", flush=True)
-    print(f"STRICT CAUSAL RESULTS: Neural 62 Breakthrough V7 ({symbol} H={horizon_min}m)", flush=True)
+    print(f"STRICT CAUSAL RESULTS: Neural 62 Breakthrough V9 ({symbol} H={horizon_min}m)", flush=True)
     print(f"=======================================================", flush=True)
 
     max_win_rate = 0.0
     for q in [98.0, 98.5, 99.0, 99.2, 99.5]:
         acc, min_a, bad_m, tpd, acc_m = eval_r2_causal_daily(p_full, y_te, ts_te, p_quantile=q)
-        print(f"Quantile P{q:4.1f}% | Daily Signals: {tpd:5.2f} | Neural V7 Win Rate: {acc*100:6.2f}% | Worst Month: {min_a*100:5.2f}%", flush=True)
+        print(f"Quantile P{q:4.1f}% | Daily Signals: {tpd:5.2f} | Neural V9 Win Rate: {acc*100:6.2f}% | Worst Month: {min_a*100:5.2f}%", flush=True)
         if acc > max_win_rate:
             max_win_rate = acc
 
     return max_win_rate
 
 if __name__ == "__main__":
-    run_neural_62_v7(symbol="ETH", horizon_min=30, seq_len=30, epochs=3, temperature=0.70)
+    run_neural_62_v9(symbol="ETH", horizon_min=30, seq_len=30, epochs=3, temperature=0.70)
