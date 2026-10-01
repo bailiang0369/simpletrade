@@ -11,6 +11,7 @@
 * `experiments/neural_62_breakthrough_v13.py`: 多尺度扩张 ConvNeXt-1D + 通道注意力 (Channel Attention)。
 * `experiments/neural_62_breakthrough_v16.py`: 实数傅里叶频域幅值 (FFT Real Spectral) + ResNet-1D 网络。
 * `experiments/neural_62_breakthrough_v17.py`: 多尺度对数收益率二阶导数 + 订单流分布偏度 + ResNet-1D。
+* `experiments/neural_62_breakthrough_v18.py`: 跨 Bar 主动买卖动量加速度 + 比率挤压 + 多尺度 1D 扩张残差块。
 
 ---
 
@@ -26,6 +27,7 @@
 | **Neural 62 Breakthrough V5** | `experiments/neural_62_breakthrough_v5.py` | **`58.77%`** | **`59.64%`** | **`60.58%`** | **有效保存** |
 | **Neural 62 Breakthrough V3** | `experiments/neural_62_breakthrough_v3.py` | **`59.80%`** | **`59.35%`** | **`60.43%`** | **有效保存** |
 | **Masked Autoencoder 预训练 Transformer** | `experiments/masked_sequence_pretrain_engine.py` | **`59.09%`** | **`60.03%`** | **58.78%** | **有效保存** |
+| **Neural 62 Breakthrough V18 (Multi-Scale Dilated ResNet)** | `experiments/neural_62_breakthrough_v18.py` | **`58.09%`** | **`58.60%`** | **`59.68%`** (P99.5%) | **有效保存** |
 | **Neural 62 Breakthrough V17 (Multi-Scale Log-Ret Acceleration)** | `experiments/neural_62_breakthrough_v17.py` | **`58.21%`** | **`58.62%`** | **`59.81%`** (P99.5%) | **有效保存** |
 | **Neural 62 Breakthrough V16 (FFT Spectral)** | `experiments/neural_62_breakthrough_v16.py` | **`57.87%`** | **`58.34%`** | **`59.30%`** | **有效保存** |
 | **Neural 62 Breakthrough V8 (Transformer+ResNet)** | `experiments/neural_62_breakthrough_v8.py` | **`59.40%`** | **`58.29%`** | **`59.71%`** | **有效保存** |
@@ -40,4 +42,4 @@
 1. **单体最高记录保持者**:
    * **`experiments/systematic_loss_tuning.py` (ResNet-1D + Label-Smoothed Focal Loss)** 在每日 14.59 笔交易的高频覆盖率下实现了 **`61.63%`** 的严因果胜率。
 2. **新有效版本入选**:
-   * **`v17` (多尺度对数收益率加速度 + 订单流分布偏度)** 在 P99.5% 下达到了 **`59.81%`** 胜率，成功入选有效保存序列。
+   * **`v18` (跨 Bar 主动买卖动量加速度 + 多尺度 1D 扩张残差块)** 在 P99.5% 下达到了 **`59.68%`** 胜率，成功入选有效保存序列。
