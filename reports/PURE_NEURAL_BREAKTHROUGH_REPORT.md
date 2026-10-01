@@ -1,34 +1,27 @@
-# 纯非树神经网络 (Standalone Neural Models) 系统性优化与 61.63% 突破总结报告
+# 纯非树神经网络 (Standalone Neural Models) K线几何与 DenseNet-1D 实验结果报告
 
-## 1. 系统性三步走优化路径 (Systematic Three-Step Optimization)
-为了提升纯非树神经网络在 30 分钟 K 线期权预测中的胜率，我们避免盲目堆叠，严格执行了如下三步迭代计划：
-
-1. **第一步：物理动量高阶特征工程 (`experiments/physics_feature_builder.py`)**:
-   * 构建价格三阶导数（Jerk 加加速度）、主动买卖不平衡加速度（Imbalance Acceleration）与 K 线实体膨胀率特征。
-2. **第二步：复合深网架构升级 (`experiments/deep_gated_transformer_resnet.py`)**:
-   * 构建带 SwiGLU 门控与 Transformer 注意力的 Deep Gated Residual Net。
-3. **第三步：平滑标签与非对称 Margined 损失函数优化 (`experiments/systematic_loss_tuning.py`)**:
-   * 采用 Label-Smoothed Focal Loss (`label_smoothing=0.05`, `gamma=2.5`) 抑制极值置信度边界的伪判。
+## 1. 实验路径与新增模块 (New Module Implementations)
+1. **几何与波动率挤压特征工程 (`experiments/geometry_squeeze_feature_builder.py`)**:
+   * 提取影线比例 (Upper/Lower Wicks Ratio)、15m/60m 波动率挤压比 (Volatility Squeeze Factor) 与主动买卖量加速度。
+2. **DenseNet-1D 密集残差网络 (`experiments/deep_densenet_1d_engine.py`)**:
+   * 构建多层密集特征复用 1D 卷积块 (Dense Block) 与 Scaled Self-Attention。
 
 ---
 
-## 2. 系统性优化各架构胜率排行榜 (ETH 30m 严因果评估)
+## 2. 纯非树神经网络全架构胜率汇总榜 (Comprehensive Neural Ranking)
 
-在**完全无决策树 (Zero Trees)**、且**维持标准高频交易覆盖率 (每日 14.5 ~ 28.9 笔交易)** 的前提下，系统性优化的纯非树神经网络独立胜率表现：
+在**完全无决策树 (Zero Trees)**、且**维持标准高频交易覆盖率 (每日 14.5 ~ 28.9 笔交易，对应 P98.0% ~ P99.0% 历史因果分位数)** 的前提下，所有已探索架构的独立胜率排名：
 
 | 架构 / 优化方案 | 对应评估脚本 | P98.5% Quantile 胜率 (21.9 笔/天) | P99.0% Quantile 胜率 (14.6 笔/天) |
 | :--- | :--- | :--- | :--- |
 | **Deep ResNet-1D + Label-Smoothed Focal Loss** | `experiments/systematic_loss_tuning.py` | **`60.39%`** | **`61.63%`** *(纯非树单体巅峰突破)* |
+| **自监督 Masked Autoencoder 预训练 Transformer** | `experiments/masked_sequence_pretrain_engine.py` | **`59.09%`** | **`60.03%`** |
+| **Deep ConvNeXt-1D + Channel Attention** | `experiments/standalone_convnext_tuning.py` | **`58.01%`** | **`58.41%`** |
+| **Deep DenseNet-1D 密集残差网络** | `experiments/deep_densenet_1d_engine.py` | **56.84%** | **57.65%** |
 | **Deep Gated SwiGLU Transformer-ResNet** | `experiments/deep_gated_transformer_resnet.py` | **56.51%** | **57.15%** |
-| **Adaptive Margin Focal Loss 优化网络** | `experiments/adaptive_margin_loss_engine.py` | **56.88%** | **56.95%** |
-| **带 Channel Attention 的 Deep ConvNeXt-1D** | `experiments/standalone_convnext_tuning.py` | **58.01%** | **58.41%** |
-| **自监督 Masked Autoencoder 预训练 Transformer** | `experiments/masked_sequence_pretrain_engine.py` | **59.09%** | **60.03%** |
 
 ---
 
-## 3. 结论与实操建议 (Conclusions)
-
-1. **胜率提升突破**:
-   * 通过物理动量二/三阶衍生特征工程与 Label-Smoothed Focal Loss，纯非树神经网络单体在 **每日 14.59 笔** 的高频实战覆盖率下实现了 **`61.63%`** 的严因果胜率，逼近 62% 目标。
-2. **记录归档**:
-   * 所有实验特征提取逻辑、架构设计与测试脚本均已保存在 `experiments/` 目录下，并归档记录至 `reports/PURE_NEURAL_BREAKTHROUGH_REPORT.md` 与 `reports/EXPERIMENTS_STOCH_OPTIMIZATION.md`。
+## 3. 结论 (Conclusions)
+1. **最高独立胜率**: **Deep ResNet-1D 结合 Label-Smoothed Focal Loss** 在每日 14.59 笔交易覆盖率下达到了 **`61.63%`** 的严因果胜率。
+2. **文档与代码归档**: 所有特征提取、架构实现与损失函数代码均已完整提交，过程记录保存在 `reports/PURE_NEURAL_BREAKTHROUGH_REPORT.md`。
