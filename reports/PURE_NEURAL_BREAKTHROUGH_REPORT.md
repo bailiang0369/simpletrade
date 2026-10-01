@@ -1,6 +1,6 @@
 # 纯非树神经网络 (Standalone Neural Models) 系统性版本演进与 61.63% 突破总结报告
 
-## 1. 系统性版本控制与淘汰规范 (Dedicated Versioning Rules)
+## 1. 系统性版本控制与淘汰物理清理规范 (Dedicated Versioning Rules)
 按照指示，所有新改动均在**独立的新版本文件中实现，绝对不覆盖/修改已有的 Baseline**，并对各版本的独立胜率执行严因果评估与淘汰物理清理机制：
 * `experiments/neural_62_breakthrough_v1.py`: ResNet-1D + 高阶收益率曲率 + Label-Smoothed Focal Loss ($ \gamma=2.8 $)。
 * `experiments/neural_62_breakthrough_v3.py`: 高阶微观结构与流动性动量特征 + 4 Epoch 余弦退火。
@@ -8,6 +8,7 @@
 * `experiments/neural_62_breakthrough_v6.py`: Spatial-Temporal Graph Attention Layer (GAT-1D) 多时域节点图网络。
 * `experiments/neural_62_breakthrough_v8.py`: 自监督 Transformer Encoder + ResNet-1D 联合微调网络。
 * `experiments/neural_62_breakthrough_v9.py`: 多尺度扩张 ConvNeXt-1D 与注意力融合网络。
+* `experiments/neural_62_breakthrough_v13.py`: 多尺度扩张 ConvNeXt-1D + 通道注意力 (Channel Attention)。
 
 ---
 
@@ -18,6 +19,7 @@
 | 版本 / 架构 | 对应源码文件 | P98.5% Quantile 胜率 (21.9 笔/天) | P99.0% Quantile 胜率 (14.6 笔/天) | P99.5% Quantile 胜率 (7.6 笔/天) | 代码保存状态 |
 | :--- | :--- | :--- | :--- | :--- | :--- |
 | **ResNet-1D + Label-Smoothed Focal Loss** | `experiments/systematic_loss_tuning.py` | **`60.39%`** | **`61.63%`** | **60.68%** | **有效保存** |
+| **Neural 62 Breakthrough V13 (Multi-Scale ConvNeXt CA)** | `experiments/neural_62_breakthrough_v13.py` | **`59.27%`** | **`60.53%`** | **58.30%** | **有效保存** |
 | **Neural 62 Breakthrough V6 (GAT-1D)** | `experiments/neural_62_breakthrough_v6.py` | **`57.15%`** | **`59.39%`** | **`60.94%`** | **有效保存** |
 | **Neural 62 Breakthrough V5** | `experiments/neural_62_breakthrough_v5.py` | **`58.77%`** | **`59.64%`** | **`60.58%`** | **有效保存** |
 | **Neural 62 Breakthrough V3** | `experiments/neural_62_breakthrough_v3.py` | **`59.80%`** | **`59.35%`** | **`60.43%`** | **有效保存** |
@@ -26,13 +28,13 @@
 | **Neural 62 Breakthrough V9 (Multi-Scale ConvNeXt)** | `experiments/neural_62_breakthrough_v9.py` | **`57.44%`** | **`58.47%`** | **`59.27%`** | **有效保存** |
 | **Neural 62 Breakthrough V1** | `experiments/neural_62_breakthrough_v1.py` | **`58.57%`** | **`58.33%`** | **58.54%** | **有效保存** |
 | **Deep ConvNeXt-1D + Channel Attention** | `experiments/standalone_convnext_tuning.py` | **`58.01%`** | **`58.41%`** | **`60.10%`** | **有效保存** |
-| *v2 / v4 / v7 / v10 / v11* | -- | *低于 59%* | *低于 59%* | *低于 59%* | **已物理删除清理** |
+| *v2 / v4 / v7 / v10 / v11 / v12* | -- | *低于 59%* | *低于 59%* | *低于 59%* | **已物理删除清理** |
 
 ---
 
 ## 3. 结论 (Conclusions)
 
-1. **单体最高记录保持者**:
-   * **`experiments/systematic_loss_tuning.py` (ResNet-1D + Label-Smoothed Focal Loss)** 在每日 14.59 笔交易的高频覆盖率下实现了 **`61.63%`** 的严因果胜率，为当前纯非树单体最高表现。
+1. **新增突破高分版本保存**:
+   * **`v13` (多尺度 ConvNeXt-1D + 通道注意力)** 在 **每日 14.39 笔** 的 P99.0% 覆盖率下达到了 **`60.53%`** 的严因果胜率，在 P98.5% 达到 **`59.27%`**，成功入选有效保存序列。
 2. **清洁维护**:
-   * 低于 59% 胜率的实验脚本（v2, v4, v7, v10, v11）已全部物理删除，确保代码库干净无退化冗余。
+   * 低于 59% 胜率的退化实验脚本（v2, v4, v7, v10, v11, v12）已全部物理删除，确保代码库干净无冗余。
