@@ -3,7 +3,8 @@ import time, gc, numpy as np, datetime, sys, warnings, pandas as pd
 import lightgbm as lgb
 from sklearn.metrics import roc_auc_score
 warnings.filterwarnings('ignore')
-sys.path.insert(0,'/workspace'); import config
+import os
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__))); import config
 
 def log(m): print(m,flush=True)
 def tpd(n,b): return n*1440/b
@@ -227,5 +228,6 @@ for name,p in final:
 if not hit:
     log(f'  ❌ NO — Nearest: {best_n[1]} top{best_n[2]*100:.1f}%: acc={best_n[3]:.4f} tpd={best_n[4]:.1f}')
 
-np.savez('/workspace/models/preds_v5.npz',**{n:p for n,p in final}, yte=yte, ret_te=ret_te, hr_te=hr_te)
+os.makedirs(os.path.join(config.PROJECT_DIR, "models"), exist_ok=True)
+np.savez(os.path.join(config.PROJECT_DIR, "models", "preds_v5.npz"), **{n:p for n,p in final}, yte=yte, ret_te=ret_te, hr_te=hr_te)
 log(f'\nTotal: {time.time()-t0:.0f}s ({(time.time()-t0)/3600:.1f}h)')

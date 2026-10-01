@@ -5,7 +5,8 @@ import time, gc, numpy as np, datetime, sys, warnings, pandas as pd
 import lightgbm as lgb
 from sklearn.metrics import roc_auc_score
 warnings.filterwarnings('ignore')
-sys.path.insert(0,'/workspace'); import config
+import os
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__))); import config
 
 def log(m): print(m,flush=True)
 def tpd(n,b): return n*1440/b
