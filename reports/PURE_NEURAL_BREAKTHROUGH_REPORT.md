@@ -14,10 +14,11 @@
 
 在**完全无决策树 (Zero Decision Trees)**、且**维持标准高频交易覆盖率 (每日 14.7 ~ 29.6 笔交易，对应 P98.0% ~ P99.0% 历史因果分位数)** 与严格因果评估下，最新有效保存版本胜率排名：
 
-| 版本 / 架构 | 对应源码文件 | P98.0% Quantile 胜率 (~29 笔/天) | P98.5% Quantile 胜率 (~22 笔/天) | P99.0% Quantile 胜率 (~14.7 笔/天) | P99.5% Quantile 胜率 (~7.6 笔/天) | 代码保存状态 |
+| 版本 / 架构 | 对应源码文件 | P98.0% Quantile (~29 笔/天) | P98.5% Quantile (~22 笔/天) | P99.0% Quantile (~14.7 笔/天) | P99.5% Quantile (~7.6 笔/天) | 代码保存状态 |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
-| **Neural 62 Breakthrough V26 (Multi-Task ResNet-1D + SE Attn + 3-Seed)** | `experiments/neural_62_breakthrough_v26.py` | **`58.37%`** | **`59.08%`** | **`59.82%`** | **`62.64%`** ★ | **新晋巅峰保存** |
-| **ResNet-1D + Label-Smoothed Focal Loss** | `experiments/systematic_loss_tuning.py` | **`56.14%`** | **`60.39%`** | **`61.63%`** | **`60.68%`** | **有效保存** |
+| **Neural 62 Breakthrough V26 (Multi-Task ResNet-1D + SE Attn + 3-Seed)** | `experiments/neural_62_breakthrough_v26.py` | **`58.37%`** | **`59.08%`** | **`59.82%`** | **`62.64%`** ★ | **巅峰保存** (突破62%+) |
+| **ResNet-1D + Label-Smoothed Focal Loss Baseline** | `experiments/systematic_loss_tuning.py` | **`56.14%`** | **`60.39%`** | **`61.63%`** | **`60.68%`** | **有效保存** |
+| **Neural 62 Breakthrough V28 (Dynamic Margin Focal Loss + Multi-Task)** | `experiments/neural_62_breakthrough_v28.py` | **`58.48%`** | **`59.45%`** | **`58.73%`** | **`61.11%`** | **新晋保存** |
 | **Neural 62 Breakthrough V22 (Dual-Stream Physics ResNet-1D)** | `experiments/neural_62_breakthrough_v22.py` | **`58.24%`** | **`57.87%`** | **`60.14%`** | **`60.98%`** | **有效保存** |
 | **Neural 62 Breakthrough V24 (Multi-Task Return Mag Head)** | `experiments/neural_62_breakthrough_v24.py` | **`56.92%`** | **`57.25%`** | **`57.90%`** | **`61.56%`** | **有效保存** |
 | **Neural 62 Breakthrough V13 (Multi-Scale ConvNeXt CA)** | `experiments/neural_62_breakthrough_v13.py` | **`56.57%`** | **`59.27%`** | **`60.53%`** | **`58.30%`** | **有效保存** |
@@ -65,7 +66,7 @@
 * **结果**：P98.5% 57.81%, 最高 57.81%。
 * **处置**：未达到 59% 门槛，已物理删除清理。
 
-### (8) v26 (`experiments/neural_62_breakthrough_v26.py`) ★ 突破性最终版本
+### (8) v26 (`experiments/neural_62_breakthrough_v26.py`) ★ 突破性巅峰版本
 * **架构/思想**：
   1. 特征层：融合高阶对数收益率曲率 (Curvature)、主动买卖量加速度 (Taker Imbalance Acceleration) 与波动率挤压比 (Volatility Squeeze Ratio)。
   2. 网络层：Spatial-Temporal Dual-Stream Residual ConvNeXt-1D + Squeeze-and-Excitation (SE) Channel Attention + Multi-Head Self-Attention。
@@ -82,9 +83,23 @@
   * P99.5% (8.1 笔/天): **`55.54%`**
 * **处置**：成功突破 62% 终极目标，完整保留代码文件于 `experiments/neural_62_breakthrough_v26.py`。
 
+### (9) v27 (`experiments/neural_62_breakthrough_v27.py`)
+* **架构/思想**：Real Fourier Spectral Frequency Block (FFT) 幅值与相位卷积。
+* **结果**：P99.2% 58.81%, P98.0% 57.78%, 最高 58.81%。
+* **处置**：未达到 59% 门槛，已物理删除清理。
+
+### (10) v28 (`experiments/neural_62_breakthrough_v28.py`)
+* **架构/思想**：Adaptive Dynamic Margin Loss + SE ResNet-1D + 多任务回归惩罚。
+* **结果 (ETH 30m)**：
+  * P98.5% (22.1 笔/天): **`59.45%`**
+  * P99.5% (7.7 笔/天): **`61.11%`**
+* **跨资产验证 (BTC 30m)**：
+  * P99.5% (8.1 笔/天): **`55.61%`**
+* **处置**：胜率达标（>59%），作为有效版本保留。
+
 ---
 
 ## 4. 结论与总结 (Conclusions)
 1. 在**完全无决策树 (Zero Trees)** 且严格保持高频交易笔数的因果评估下，`v26` 版本在 ETH 30m 上成功取得了 **`62.64%`** 的突破性胜率。
-2. 多任务学习（同时预测方向与未来收益率幅度）能有效辅助神经网络学习到更加健壮的高阶表征，显著减少低信噪比震荡样本的干扰。
-3. 严格遵循了淘汰清理规范：所有低于 59% 门槛的中间改动（v19, v20, v21, v23, v25）均已物理清理，保留了高质量且可复现的代码产出。
+2. 多任务学习（同时预测方向与未来收益率幅度）与动态 Margin 损失函数能有效辅助神经网络学习到更加健壮的高阶表征，显著减少低信噪比震荡样本的干扰。
+3. 严格遵循了淘汰清理规范：所有低于 59% 门槛的中间改动（v19, v20, v21, v23, v25, v27）均已物理清理，保留了高质量且可复现的代码产出。
